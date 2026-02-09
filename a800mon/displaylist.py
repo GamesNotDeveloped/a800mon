@@ -48,6 +48,8 @@ class DisplayListMemoryMapper:
 
     def _width_bytes(self):
         w = self.dmactl & 0x03
+        if w == 0:
+            return 40
         if w == 1:
             return 32
         if w == 2:

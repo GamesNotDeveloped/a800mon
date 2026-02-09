@@ -41,6 +41,7 @@ class RpcClient:
     def __init__(self, transport):
         self._transport = transport
         self.last_error = None
+        self._max_read = 0x400
 
     def call(self, command: Command, payload=None):
         try:
@@ -73,7 +74,20 @@ class RpcClient:
         return data[0]
 
     def read_memory(self, addr: int, length: int):
-        return self.call(Command.MEM_READ, struct.pack("<HH", addr, length))
+        if length <= 0:
+            return b""
+        max_chunk = self._max_read
+        if max_chunk <= 0 or length <= max_chunk:
+            return self.call(Command.MEM_READ, struct.pack("<HH", addr, length))
+        data = bytearray()
+        remaining = length
+        cur = addr
+        while remaining:
+            take = max_chunk if remaining > max_chunk else remaining
+            data += self.call(Command.MEM_READ, struct.pack("<HH", cur, take))
+            cur = (cur + take) & 0xFFFF
+            remaining -= take
+        return bytes(data)
 
     def read_memory_multiple(self, ranges):
         payload = struct.pack("<H", len(ranges)) + b"".join(
