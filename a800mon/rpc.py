@@ -27,6 +27,7 @@ class Command(enum.Enum):
     DLIST_ADDR = "dlist_addr"
     DLIST_DUMP = "dlist_dump"
     MEM_READ = "mem_read"
+    MEM_READV = "mem_readv"
     CPU_STATE = "cpu_state"
     PAUSE = "pause"
     CONTINUE = "continue"
@@ -68,6 +69,12 @@ class RpcClient:
 
     def read_memory(self, addr: int, length: int):
         return self.call(Command.MEM_READ, struct.pack("<HH", addr, length))
+
+    def read_memory_multiple(self, ranges):
+        payload = struct.pack("<H", len(ranges)) + b"".join(
+            struct.pack("<HH", addr, ln) for addr, ln in ranges
+        )
+        return self.call(Command.MEM_READV, payload)
 
     def read_display_list(self):
         return self.call(Command.DLIST_DUMP)

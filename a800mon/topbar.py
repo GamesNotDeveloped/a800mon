@@ -1,4 +1,5 @@
 from .app import RpcComponent
+from .appstate import state
 from .ui import Color
 
 
@@ -25,3 +26,6 @@ class TopBar(RpcComponent):
                 )
                 self.window.fill_to_eol(attr=Color.TOPBAR.attr())
             self._dirty = False
+
+        self.window.cursor = self.window._iw - 10, 0
+        self.window.print(f" {state.monitor_frame_time_ms:3d} ms ")

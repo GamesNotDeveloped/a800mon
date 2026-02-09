@@ -1,6 +1,8 @@
 import curses
 import time
 
+from .appstate import state
+
 
 class StopLoop(Exception):
     pass
@@ -41,7 +43,7 @@ class App:
             component.render(force_redraw=True)
         self._screen.update()
 
-    def loop(self, iter_time=0.1):
+    def loop(self, iter_time=0.025):
         self._screen.initialize()
         self.rebuild_screen()
 
@@ -53,6 +55,7 @@ class App:
                 self.render_components()
 
                 time_diff = time.time() - start_time
+                state.monitor_frame_time_ms = int(time_diff * 1000.0)
                 sleep_time = iter_time - time_diff
                 if sleep_time > 0:
                     time.sleep(sleep_time)

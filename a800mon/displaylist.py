@@ -1,3 +1,5 @@
+import time
+
 from .app import RpcComponent
 from .appstate import state
 from .datastructures import DisplayList, DisplayListEntry
@@ -151,7 +153,13 @@ class DisplayListMemoryMapper:
 
 
 class DisplayListViewer(RpcComponent):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._last_update = None
+
     def update(self):
+        if self._last_update and time.time() - self._last_update < 0.1:
+            return
         try:
             start_addr = self.rpc.read_vector(DLPTRS_ADDR)
             dump = self.rpc.read_display_list()
@@ -172,6 +180,7 @@ class DisplayListViewer(RpcComponent):
         for addr, desc in entries:
             self.window.print(addr, attr=Color.ADDRESS.attr())
             self.window.print(desc)
+            self.window.clear_to_eol()
             self.window.newline()
         # self.window.print_lines(entries)
         self.window.clear_to_bottom()

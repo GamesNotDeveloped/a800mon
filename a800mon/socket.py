@@ -23,6 +23,7 @@ SUPPORTED_COMMANDS = {
     Command.DLIST_ADDR: 2,
     Command.DLIST_DUMP: 4,
     Command.MEM_READ: 3,
+    Command.MEM_READV: 11,
     Command.CPU_STATE: 5,
     Command.PAUSE: 6,
     Command.CONTINUE: 7,
@@ -45,6 +46,7 @@ class SocketTransport:
         try:
             self._s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             self._s.connect(self.path)
+            self._s.settimeout(0.5)
         except (IOError, FileNotFoundError) as ex:
             raise ConnectionError(f"Cannot connect to socket {self.path}: {ex}")
 
@@ -61,6 +63,8 @@ class SocketTransport:
                 self._s.sendall(
                     bytes([command]) + struct.pack("<H", len(payload)) + payload
                 )
+            except TimeoutError:
+                raise ConnectionError("Packet timeout")
             except socket.error:
                 try:
                     self._s.close()
@@ -76,6 +80,8 @@ class SocketTransport:
         try:
             hdr = self._s.recv(3)
             status, ln = hdr[0], hdr[1] | (hdr[2] << 8)
+        except TimeoutError:
+            raise ConnectionError("Packet timeout")
         except IndexError:
             raise IOError("Incorrect data frame")
         data = b""

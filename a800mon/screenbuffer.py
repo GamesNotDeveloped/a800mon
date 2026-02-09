@@ -1,6 +1,7 @@
 import dataclasses
 import time
 
+from . import debug
 from .app import RpcComponent
 from .appstate import state
 from .atascii import atascii_to_curses, screen_to_atascii
@@ -8,7 +9,6 @@ from .datastructures import ScreenBuffer
 from .displaylist import DMACTL_ADDR, DisplayListMemoryMapper
 from .rpc import RpcException
 from .ui import Color
-from . import debug
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -40,6 +40,7 @@ class ScreenBufferCell:
 
 class ScreenBufferInspector(RpcComponent):
     def __init__(self, *args, **kwargs):
+        self._update_interval = kwargs.pop("update_inteval", 0.05)
         super().__init__(*args, **kwargs)
         self._inspect = False
         self._cx = 0
@@ -129,18 +130,19 @@ class ScreenBufferInspector(RpcComponent):
         self.window.invert_char(self._cx, self._cy)
 
     def update(self):
-        if self._last_update and time.time() - self._last_update < 0.5:
+        if (
+            self._last_update
+            and time.time() - self._last_update < self._update_interval
+        ):
             return
         try:
             dmactl = self.rpc.read_vector(DMACTL_ADDR)
             fetch_ranges, row_slices = DisplayListMemoryMapper(
                 state.dlist, dmactl
             ).plan()
-            buffer = b"".join(self.rpc.read_memory(s, e - s) for s, e in fetch_ranges)
+            rpc_ranges = [(s, e - s) for s, e in fetch_ranges]
+            buffer = self.rpc.read_memory_multiple(rpc_ranges)
             start_address = fetch_ranges[0][0] if fetch_ranges else 0
-            debug.log(f"{self} fetch_ranges={len(fetch_ranges)}")
-            for i, rng in enumerate(fetch_ranges):
-                debug.log(f"{self} range {i}: {rng} len={rng[1]-rng[0]}")
             state.screen_buffer = ScreenBuffer(
                 row_slices=row_slices, buffer=buffer, start_address=start_address
             )
