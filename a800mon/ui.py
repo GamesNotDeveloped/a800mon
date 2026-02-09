@@ -181,15 +181,27 @@ class Window(Component):
         text = str(text)
         tl = len(text)
         iw, ih = self._iw, self._ih
+        if iw <= 0 or ih <= 0:
+            return
         cx, cy = self.cursor
+        if cx < 0 or cy < 0 or cx >= iw or cy >= ih:
+            cx = max(0, min(cx, iw - 1))
+            cy = max(0, min(cy, ih - 1))
 
         c = 0
         while c < tl and cy < ih:
-            cut = min(iw - cx - 1, tl)
-            if cut == 0:
+            cut = min(iw - cx - 1, tl - c)
+            if cut <= 0:
+                if wrap and cy < ih - 1:
+                    cx = 0
+                    cy += 1
+                    continue
                 break
-            ctxt = text[c : cut + c]
-            self.inner.addstr(cy, cx, ctxt, attr)
+            ctxt = text[c : c + cut]
+            try:
+                self.inner.addstr(cy, cx, ctxt, attr)
+            except curses.error:
+                break
             cx += cut
             if cx == iw - 1:
                 cx = 0
@@ -201,7 +213,10 @@ class Window(Component):
                 break
             c += cut
 
-        self.inner.move(cy, cx)
+        try:
+            self.inner.move(cy, cx)
+        except curses.error:
+            pass
 
     def print_line(self, text, attr=0, wrap=False):
         self.print(text=text, attr=attr, wrap=wrap)
