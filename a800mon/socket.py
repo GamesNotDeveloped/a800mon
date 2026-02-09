@@ -19,6 +19,8 @@ class SocketCommand(enum.IntEnum):
     RUN = 12
     COLDSTART = 13
     WARMSTART = 14
+    REMOVECARTRIGE = 15
+    STOP_EMULATOR = 16
 
 
 SUPPORTED_COMMANDS = {
@@ -36,6 +38,8 @@ SUPPORTED_COMMANDS = {
     Command.RUN: 12,
     Command.COLDSTART: 13,
     Command.WARMSTART: 14,
+    Command.REMOVECARTRIGE: 15,
+    Command.STOP_EMULATOR: 16,
 }
 
 

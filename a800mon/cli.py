@@ -52,6 +52,16 @@ def _parse_args(argv):
     warmstart = subparsers.add_parser("warmstart", help="Warm start emulation.")
     warmstart.set_defaults(func=_cmd_warmstart)
 
+    removecartrige = subparsers.add_parser(
+        "removecartrige", help="Remove cartridge."
+    )
+    removecartrige.set_defaults(func=_cmd_removecartrige)
+
+    stopemulator = subparsers.add_parser(
+        "stopemulator", help="Stop emulator."
+    )
+    stopemulator.set_defaults(func=_cmd_stop_emulator)
+
     dump_dlist = subparsers.add_parser(
         "dump_dlist", help="Dump display list."
     )
@@ -199,6 +209,16 @@ def _cmd_coldstart(args):
 
 def _cmd_warmstart(args):
     _rpc(args.socket).call(Command.WARMSTART)
+    return 0
+
+
+def _cmd_removecartrige(args):
+    _rpc(args.socket).call(Command.REMOVECARTRIGE)
+    return 0
+
+
+def _cmd_stop_emulator(args):
+    _rpc(args.socket).call(Command.STOP_EMULATOR)
     return 0
 
 

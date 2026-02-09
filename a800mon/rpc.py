@@ -37,6 +37,8 @@ class Command(enum.Enum):
     RUN = "run"
     COLDSTART = "coldstart"
     WARMSTART = "warmstart"
+    REMOVECARTRIGE = "removecartrige"
+    STOP_EMULATOR = "stop_emulator"
 
 
 class RpcClient:
