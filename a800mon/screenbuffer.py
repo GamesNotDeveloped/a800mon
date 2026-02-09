@@ -114,11 +114,20 @@ class ScreenBufferInspector(RpcComponent):
             if rownum > self.window._ih - 1:
                 break
             if isinstance(row_info, tuple):
-                slice_, start_addr = row_info
+                if isinstance(row_info[0], slice):
+                    start_addr = row_info[1]
+                    length = row_info[0].stop - row_info[0].start
+                else:
+                    start_addr = row_info[0]
+                    length = row_info[1]
             else:
-                slice_ = row_info
-                start_addr = state.screen_buffer.start_address + slice_.start
-            row = state.screen_buffer.buffer[slice_][: self.window._iw - 8]
+                start_addr = state.screen_buffer.start_address + row_info.start
+                length = row_info.stop - row_info.start
+            if length <= 0:
+                continue
+            row = state.screen_buffer.get_range(start_addr, length)[
+                : self.window._iw - 8
+            ]
             self.window.print(f"{start_addr:04X}: ", attr=Color.ADDRESS.attr())
             for i, b in enumerate(row):
                 ac, attr = (
@@ -145,11 +154,20 @@ class ScreenBufferInspector(RpcComponent):
                 state.dlist, dmactl
             ).plan()
             rpc_ranges = [(s, e - s) for s, e in fetch_ranges]
-            debug.log(f"rpc ranges: {rpc_ranges}")
-            buffer = self.rpc.read_memory_multiple(rpc_ranges)
+            buffer = b"".join(
+                self.rpc.read_memory(s, e - s) for s, e in fetch_ranges
+            )
             start_address = fetch_ranges[0][0] if fetch_ranges else 0
+            range_index = []
+            offset = 0
+            for s, e in fetch_ranges:
+                range_index.append((s, e, offset))
+                offset += e - s
             state.screen_buffer = ScreenBuffer(
-                row_slices=row_slices, buffer=buffer, start_address=start_address
+                row_slices=row_slices,
+                buffer=buffer,
+                start_address=start_address,
+                range_index=range_index,
             )
             self._last_update = time.time()
         except RpcException:

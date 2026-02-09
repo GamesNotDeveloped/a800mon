@@ -125,6 +125,46 @@ class DisplayList:
 class ScreenBuffer:
     start_address: int = 0
     buffer: bytes = b""
+    range_index: typing.List[typing.Tuple[int, int, int]] = dataclasses.field(
+        default_factory=list
+    )
     row_slices: typing.List[
-        typing.Union[slice, typing.Tuple[slice, int]]
+        typing.Union[
+            slice,
+            typing.Tuple[slice, int],
+            typing.Tuple[int, typing.List[slice]],
+            typing.Tuple[int, int],
+        ]
     ] = dataclasses.field(default_factory=list)
+
+    def get_range(self, addr: int, length: int) -> bytes:
+        if length <= 0 or not self.range_index:
+            return b""
+        addr &= 0xFFFF
+        end = addr + length
+        if end <= 0x10000:
+            return self._get_range_linear(addr, length)
+        first_len = 0x10000 - addr
+        return self._get_range_linear(addr, first_len) + self._get_range_linear(
+            0, length - first_len
+        )
+
+    def _get_range_linear(self, addr: int, length: int) -> bytes:
+        if length <= 0:
+            return b""
+        end = addr + length
+        parts = []
+        remaining = length
+        cur = addr
+        while remaining > 0:
+            for start, stop, offset in self.range_index:
+                if start <= cur < stop:
+                    take = min(remaining, stop - cur)
+                    buf_start = offset + (cur - start)
+                    parts.append(self.buffer[buf_start : buf_start + take])
+                    cur += take
+                    remaining -= take
+                    break
+            else:
+                return b""
+        return b"".join(parts)

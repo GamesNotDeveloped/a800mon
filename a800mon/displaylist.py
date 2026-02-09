@@ -129,25 +129,12 @@ class DisplayListMemoryMapper:
                 fetch.append((s, chunk_end))
                 s = chunk_end
 
-        map_segs = []
-        offset = 0
-        for s, e in fetch:
-            map_segs.append((s, e, offset))
-            offset += e - s
-
         row_slices = []
         for addr, length in rows:
             if addr is None or length == 0:
                 # row_slices.append(None)
                 continue
-            for s, e, off in map_segs:
-                if s <= addr and addr + length <= e:
-                    start = off + (addr - s)
-                    row_slices.append((slice(start, start + length), addr))
-                    break
-            else:
-                # row_slices.append(None)
-                pass
+            row_slices.append((addr, length))
 
         return fetch, row_slices
 
