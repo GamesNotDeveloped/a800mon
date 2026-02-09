@@ -46,6 +46,12 @@ def _parse_args(argv):
     cont = subparsers.add_parser("continue", help="Continue emulation.")
     cont.set_defaults(func=_cmd_continue)
 
+    coldstart = subparsers.add_parser("coldstart", help="Cold start emulation.")
+    coldstart.set_defaults(func=_cmd_coldstart)
+
+    warmstart = subparsers.add_parser("warmstart", help="Warm start emulation.")
+    warmstart.set_defaults(func=_cmd_warmstart)
+
     dump_dlist = subparsers.add_parser(
         "dump_dlist", help="Dump display list."
     )
@@ -183,6 +189,16 @@ def _cmd_step_vblank(args):
 
 def _cmd_continue(args):
     _rpc(args.socket).call(Command.CONTINUE)
+    return 0
+
+
+def _cmd_coldstart(args):
+    _rpc(args.socket).call(Command.COLDSTART)
+    return 0
+
+
+def _cmd_warmstart(args):
+    _rpc(args.socket).call(Command.WARMSTART)
     return 0
 
 

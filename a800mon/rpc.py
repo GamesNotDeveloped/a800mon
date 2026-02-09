@@ -35,6 +35,8 @@ class Command(enum.Enum):
     STEP_VBLANK = "step_vblank"
     STATUS = "status"
     RUN = "run"
+    COLDSTART = "coldstart"
+    WARMSTART = "warmstart"
 
 
 class RpcClient:
