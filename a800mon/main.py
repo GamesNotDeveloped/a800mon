@@ -135,6 +135,8 @@ def main(scr, socket_path):
 
     topbar = TopBar(rpc, top, status_hook=_sync_state)
     shortcutbar = ShortcutBar(bottom, shortcuts)
+
+    shortcuts.add_global("d", "DL Inspect", display_list.toggle_inspect)
     scr = Screen(scr, layout_initializer=init_screen)
     app = App(screen=scr)
     app.add_component(shortcuts)

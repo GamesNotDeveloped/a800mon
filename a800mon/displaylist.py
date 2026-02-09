@@ -1,4 +1,5 @@
 import time
+import curses
 
 from .app import VisualRpcComponent
 from .appstate import state
@@ -38,6 +39,8 @@ def decode_displaylist(start_addr: int, data: bytes):
             break  # JVB kończy listę
 
     return DisplayList(start_addr, entries)
+
+
 
 
 class DisplayListMemoryMapper:
@@ -178,6 +181,30 @@ class DisplayListViewer(VisualRpcComponent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._last_update = None
+        self._inspect = False
+        self._dmactl = 0
+
+    def toggle_inspect(self):
+        self._inspect = not self._inspect
+        if not self._inspect:
+            state.dlist_selected_region = None
+        else:
+            if state.dlist_selected_region is None:
+                state.dlist_selected_region = 0
+
+    def _move_selection(self, delta):
+        if not self._inspect:
+            return
+        segs = state.dlist.screen_segments(self._dmactl)
+        if not segs:
+            state.dlist_selected_region = None
+            return
+        if state.dlist_selected_region is None:
+            state.dlist_selected_region = 0
+        else:
+            state.dlist_selected_region = max(
+                0, min(len(segs) - 1, state.dlist_selected_region + delta)
+            )
 
     def update(self):
         if self._last_update and time.time() - self._last_update < 0.1:
@@ -185,12 +212,51 @@ class DisplayListViewer(VisualRpcComponent):
         try:
             start_addr = self.rpc.read_vector(DLPTRS_ADDR)
             dump = self.rpc.read_display_list()
+            dmactl = self.rpc.read_byte(DMACTL_ADDR)
+            if (dmactl & 0x03) == 0:
+                dmactl = self.rpc.read_byte(DMACTL_HW_ADDR)
         except RpcException:
             return
         else:
             state.dlist = decode_displaylist(start_addr, dump)
+            self._dmactl = dmactl
+
+    def handle_input(self, ch):
+        if not self._inspect:
+            return False
+        if ch in (ord("j"), curses.KEY_DOWN):
+            self._move_selection(1)
+            return True
+        if ch in (ord("k"), curses.KEY_UP):
+            self._move_selection(-1)
+            return True
+        return False
 
     def render(self, force_redraw=False):
+        if self._inspect:
+            segs = state.dlist.screen_segments(self._dmactl)
+            if not segs:
+                state.dlist_selected_region = None
+                self.window.clear_to_bottom()
+                return
+            if state.dlist_selected_region is None:
+                state.dlist_selected_region = 0
+            if state.dlist_selected_region >= len(segs):
+                state.dlist_selected_region = len(segs) - 1
+            for idx, (start, end, mode) in enumerate(segs):
+                length = end - start
+                last = (end - 1) & 0xFFFF
+                attr = curses.A_REVERSE if idx == state.dlist_selected_region else 0
+                self.window.print_line(
+                    f"{start:04X}-{last:04X} len={length:04X} antic={mode}",
+                    attr=attr,
+                )
+                if idx == state.dlist_selected_region:
+                    self.window.clear_to_eol(inverse=True)
+                else:
+                    self.window.clear_to_eol()
+            self.window.clear_to_bottom()
+            return
         entries = (
             (
                 (f"{entry.addr:04X}:", f" {count}x {entry.description}")

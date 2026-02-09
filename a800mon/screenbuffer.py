@@ -46,6 +46,7 @@ class ScreenBufferInspector(VisualRpcComponent):
         self._cx = 0
         self._cy = 0
         self._last_update = None
+        self._dmactl = 0
 
     @property
     def cols(self):
@@ -108,7 +109,16 @@ class ScreenBufferInspector(VisualRpcComponent):
         raise NotImplementedError
 
     def render(self, force_redraw=False) -> None:
+        segs = state.dlist.screen_segments(self._dmactl)
+        active_seg = None
+        if state.dlist_selected_region is not None and segs:
+            if 0 <= state.dlist_selected_region < len(segs):
+                active_seg = segs[state.dlist_selected_region]
         for rownum, row_info in enumerate(state.screen_buffer.row_slices):
+            if active_seg is not None:
+                start, end, _mode = active_seg
+                if not (start <= row_info[0] < end):
+                    continue
             if not row_info:
                 continue
             if rownum > self.window._ih - 1:
@@ -152,10 +162,20 @@ class ScreenBufferInspector(VisualRpcComponent):
             dmactl = self.rpc.read_byte(DMACTL_ADDR)
             if (dmactl & 0x03) == 0:
                 dmactl = self.rpc.read_byte(DMACTL_HW_ADDR)
-            fetch_ranges, row_slices = DisplayListMemoryMapper(
-                state.dlist, dmactl
-            ).plan()
-            rpc_ranges = [(s, e - s) for s, e in fetch_ranges]
+            mapper = DisplayListMemoryMapper(state.dlist, dmactl)
+            fetch_ranges, row_slices = mapper.plan()
+            segs = state.dlist.screen_segments(dmactl)
+            if (
+                state.dlist_selected_region is not None
+                and 0 <= state.dlist_selected_region < len(segs)
+            ):
+                seg_start, seg_end, _mode = segs[state.dlist_selected_region]
+                fetch_ranges = [(seg_start, seg_end)]
+                row_slices = [
+                    (addr, length)
+                    for addr, length in mapper.row_ranges()
+                    if addr is not None and seg_start <= addr < seg_end
+                ]
             buffer = b"".join(
                 self.rpc.read_memory(s, e - s) for s, e in fetch_ranges
             )
@@ -171,6 +191,7 @@ class ScreenBufferInspector(VisualRpcComponent):
                 start_address=start_address,
                 range_index=range_index,
             )
+            self._dmactl = dmactl
             self._last_update = time.time()
         except RpcException:
             pass

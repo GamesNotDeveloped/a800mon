@@ -238,7 +238,7 @@ def _cmd_dump_dlist(args):
     dmactl = rpc.read_byte(DMACTL_ADDR)
     if (dmactl & 0x03) == 0:
         dmactl = rpc.read_byte(DMACTL_HW_ADDR)
-    segments = _screen_segments(dlist, dmactl)
+    segments = dlist.screen_segments(dmactl)
     if segments:
         sys.stdout.write("Screen segments:\n")
         for idx, (start, end, mode) in enumerate(segments, start=1):
@@ -309,7 +309,7 @@ def _cmd_screen(args):
     dmactl = rpc.read_byte(DMACTL_ADDR)
     if (dmactl & 0x03) == 0:
         dmactl = rpc.read_byte(DMACTL_HW_ADDR)
-    segments = _screen_segments(dlist, dmactl)
+    segments = dlist.screen_segments(dmactl)
     if not segments:
         raise SystemExit("No screen segments found.")
     if args.segment is None:
@@ -367,31 +367,6 @@ def _print_cpu_state(rpc):
     sys.stdout.write(repr(cpu) + "\n")
 
 
-def _screen_segments(dlist, dmactl):
-    rows = DisplayListMemoryMapper(dlist, dmactl).row_ranges_with_modes()
-    segs = []
-    for addr, length, mode in rows:
-        if addr is None or length == 0:
-            continue
-        end = addr + length
-        if end <= 0x10000:
-            segs.append((addr, end, mode))
-        else:
-            segs.append((addr, 0x10000, mode))
-            segs.append((0, end & 0xFFFF, mode))
-    if not segs:
-        return []
-    merged = []
-    cur_s, cur_e, cur_mode = segs[0]
-    for s, e, mode in segs[1:]:
-        if mode == cur_mode and cur_s <= s <= cur_e:
-            if e > cur_e:
-                cur_e = e
-        else:
-            merged.append((cur_s, cur_e, cur_mode))
-            cur_s, cur_e, cur_mode = s, e, mode
-    merged.append((cur_s, cur_e, cur_mode))
-    return merged
 
 
 def _parse_hex(value):
