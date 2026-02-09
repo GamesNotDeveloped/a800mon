@@ -1,10 +1,10 @@
-from .app import RpcComponent
+from .app import VisualRpcComponent
 from .appstate import state
 from .datastructures import CpuState
 from .rpc import Command, RpcException
 
 
-class CpuStateViewer(RpcComponent):
+class CpuStateViewer(VisualRpcComponent):
     def update(self):
         try:
             data = self.rpc.cpu_state()

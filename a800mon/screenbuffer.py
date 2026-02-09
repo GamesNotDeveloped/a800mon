@@ -2,7 +2,7 @@ import dataclasses
 import time
 
 from . import debug
-from .app import RpcComponent
+from .app import VisualRpcComponent
 from .appstate import state
 from .atascii import atascii_to_curses, screen_to_atascii
 from .datastructures import ScreenBuffer
@@ -38,7 +38,7 @@ class ScreenBufferCell:
         return self.as_ascii()
 
 
-class ScreenBufferInspector(RpcComponent):
+class ScreenBufferInspector(VisualRpcComponent):
     def __init__(self, *args, **kwargs):
         self._update_interval = kwargs.pop("update_inteval", 0.05)
         super().__init__(*args, **kwargs)

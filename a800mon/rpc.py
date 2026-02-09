@@ -102,6 +102,13 @@ class RpcClient:
     def read_display_list(self):
         return self.call(Command.DLIST_DUMP)
 
+    def status(self):
+        data = self.call(Command.STATUS)
+        if len(data) < 17:
+            raise RpcException("STATUS payload too short")
+        paused, emu_ms, reset_ms = struct.unpack("<BQQ", data[:17])
+        return paused, emu_ms, reset_ms
+
     def cpu_state(self):
         data = self.call(Command.CPU_STATE)
         return struct.unpack("<HHHBBBBB", data)

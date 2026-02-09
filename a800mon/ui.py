@@ -1,6 +1,5 @@
 import curses
 import enum
-from .app import Component
 
 
 class Screen:
@@ -10,14 +9,20 @@ class Screen:
         self.layout_initializer = layout_initializer
         self._initialized = False
         self.scr.nodelay(True)
-        init_color_pairs()
 
     def initialize(self):
         curses.noecho()
         curses.cbreak()
-        curses.curs_set(0)
+        curses.set_escdelay(25)
+        try:
+            curses.curs_set(0)
+        except curses.error:
+            pass
         self.scr.keypad(True)
         self.scr.erase()
+        if curses.has_colors():
+            curses.start_color()
+            init_color_pairs()
         self._initialized = True
 
     @property
@@ -25,7 +30,7 @@ class Screen:
         h, w = self.scr.getmaxyx()
         return w, h
 
-    def add(self, window: Component):
+    def add(self, window):
         window.add_to_parent(self.scr)
         self.windows.append(window)
 
@@ -67,7 +72,7 @@ class Component:
             self._dirty = False
 
 
-class Window(Component):
+class Window:
     def __init__(self, x=0, y=0, w=1, h=1, title=None, border=True):
         self.x = x
         self.y = y
@@ -167,6 +172,14 @@ class Window(Component):
             self.outer.noutrefresh()
         self.inner.noutrefresh()
         self.cursor = (0, 0)
+
+    def refresh(self):
+        self._do_refresh()
+
+    def refresh_if_dirty(self):
+        if self._dirty:
+            self.refresh()
+            self._dirty = False
 
     def print_char(self, char, attr=0, wrap=False):
         cx, cy = self.cursor

@@ -1,6 +1,6 @@
 import time
 
-from .app import RpcComponent
+from .app import VisualRpcComponent
 from .appstate import state
 from .datastructures import DisplayList, DisplayListEntry
 from .rpc import RpcException
@@ -174,7 +174,7 @@ class DisplayListMemoryMapper:
         return fetch, row_slices
 
 
-class DisplayListViewer(RpcComponent):
+class DisplayListViewer(VisualRpcComponent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._last_update = None
