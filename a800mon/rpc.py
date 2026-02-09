@@ -68,6 +68,10 @@ class RpcClient:
         ptr = self.call(Command.MEM_READ, struct.pack("<HH", addr, 2))
         return ptr[0] | (ptr[1] << 8)
 
+    def read_byte(self, addr: int) -> int:
+        data = self.call(Command.MEM_READ, struct.pack("<HH", addr, 1))
+        return data[0]
+
     def read_memory(self, addr: int, length: int):
         return self.call(Command.MEM_READ, struct.pack("<HH", addr, length))
 

@@ -7,6 +7,7 @@ from .rpc import RpcException
 from .ui import Color
 
 DMACTL_ADDR = 0x022F
+DMACTL_HW_ADDR = 0xD400
 DLPTRS_ADDR = 0x0230
 
 

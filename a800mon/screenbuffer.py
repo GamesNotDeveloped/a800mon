@@ -6,7 +6,7 @@ from .app import RpcComponent
 from .appstate import state
 from .atascii import atascii_to_curses, screen_to_atascii
 from .datastructures import ScreenBuffer
-from .displaylist import DMACTL_ADDR, DisplayListMemoryMapper
+from .displaylist import DMACTL_ADDR, DMACTL_HW_ADDR, DisplayListMemoryMapper
 from .rpc import RpcException
 from .ui import Color
 
@@ -149,7 +149,9 @@ class ScreenBufferInspector(RpcComponent):
         ):
             return
         try:
-            dmactl = self.rpc.read_vector(DMACTL_ADDR)
+            dmactl = self.rpc.read_byte(DMACTL_ADDR)
+            if (dmactl & 0x03) == 0:
+                dmactl = self.rpc.read_byte(DMACTL_HW_ADDR)
             fetch_ranges, row_slices = DisplayListMemoryMapper(
                 state.dlist, dmactl
             ).plan()

@@ -5,7 +5,13 @@ import sys
 
 from .atascii import screen_to_atascii
 from .datastructures import CpuState, Memory
-from .displaylist import DMACTL_ADDR, DLPTRS_ADDR, DisplayListMemoryMapper, decode_displaylist
+from .displaylist import (
+    DMACTL_ADDR,
+    DMACTL_HW_ADDR,
+    DLPTRS_ADDR,
+    DisplayListMemoryMapper,
+    decode_displaylist,
+)
 from .main import run as run_monitor
 from .rpc import Command, RpcClient
 from .socket import SocketTransport
@@ -193,7 +199,9 @@ def _cmd_dump_dlist(args):
         sys.stdout.write(line + "\n")
     sys.stdout.write("\n")
     sys.stdout.write(f"Length: {len(dump):04X}\n")
-    dmactl = rpc.read_vector(DMACTL_ADDR)
+    dmactl = rpc.read_byte(DMACTL_ADDR)
+    if (dmactl & 0x03) == 0:
+        dmactl = rpc.read_byte(DMACTL_HW_ADDR)
     segments = _screen_segments(dlist, dmactl)
     if segments:
         sys.stdout.write("Screen segments:\n")
@@ -262,7 +270,9 @@ def _cmd_screen(args):
     start_addr = rpc.read_vector(DLPTRS_ADDR)
     dump = rpc.read_display_list()
     dlist = decode_displaylist(start_addr, dump)
-    dmactl = rpc.read_vector(DMACTL_ADDR)
+    dmactl = rpc.read_byte(DMACTL_ADDR)
+    if (dmactl & 0x03) == 0:
+        dmactl = rpc.read_byte(DMACTL_HW_ADDR)
     segments = _screen_segments(dlist, dmactl)
     if not segments:
         raise SystemExit("No screen segments found.")
