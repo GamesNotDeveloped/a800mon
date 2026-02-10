@@ -293,6 +293,8 @@ def init_color_pairs():
     curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)
     curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
     curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)
+    curses.init_pair(5, curses.COLOR_RED, curses.COLOR_BLACK)
+    curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_BLACK)
 
 
 class Color(enum.Enum):
@@ -303,6 +305,8 @@ class Color(enum.Enum):
     TOPBAR = (0, curses.A_REVERSE)
     FOCUS = (3, curses.A_BOLD)
     APPMODE = (4, curses.A_BOLD | curses.A_REVERSE | curses.A_DIM)
+    APPMODE_DEBUG = (6, curses.A_BOLD | curses.A_REVERSE | curses.A_DIM)
+    APPMODE_SHUTDOWN = (5, curses.A_BOLD | curses.A_REVERSE | curses.A_DIM)
     SHORTCUT = (0, curses.A_REVERSE)
 
     def attr(self):

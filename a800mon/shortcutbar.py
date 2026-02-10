@@ -26,7 +26,7 @@ class ShortcutBar(VisualComponent):
                 self._last_mode = state.active_mode
                 layer_text = layer.name[: self._mode_width].ljust(
                     self._mode_width)
-                self.window.print(layer_text, Color.APPMODE.attr())
+                self.window.print(layer_text, layer.color.attr())
 
                 for shortcut in layer.get_shortcuts():
                     self._print_slot(shortcut)

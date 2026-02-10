@@ -12,7 +12,7 @@ from .shortcutbar import ShortcutBar
 from .shortcuts import Shortcut, ShortcutLayer
 from .socket import SocketTransport
 from .topbar import TopBar
-from .ui import Screen, Window
+from .ui import Color, Screen, Window
 
 
 class AppModeUpdater(Component):
@@ -28,6 +28,44 @@ class AppModeUpdater(Component):
         if state.paused != self._last_paused:
             self._last_paused = state.paused
             self._dispatcher.dispatch(Actions.SYNC_MODE)
+
+
+def build_shortcuts(dispatcher):
+    def action(key, label, action):
+        return Shortcut(key, label, lambda: dispatcher.dispatch(action))
+
+    step = action(curses.KEY_F0 + 5, "Step", Actions.STEP)
+    step_vblank = action(curses.KEY_F0 + 6, "Step VBLANK", Actions.STEP_VBLANK)
+    pause = action(curses.KEY_F0 + 8, "Pause", Actions.PAUSE)
+    cont = action(curses.KEY_F0 + 8, "Continue", Actions.CONTINUE)
+    enter_shutdown = action(27, "Shutdown", Actions.ENTER_SHUTDOWN)
+    exit_shutdown = action(27, "Back", Actions.EXIT_SHUTDOWN)
+
+    normal = ShortcutLayer("NORMAL")
+    normal.add(step)
+    normal.add(step_vblank)
+    normal.add(pause)
+    normal.add(enter_shutdown)
+
+    debug = ShortcutLayer("DEBUG", color=Color.APPMODE_DEBUG)
+    debug.add(step)
+    debug.add(step_vblank)
+    debug.add(cont)
+    debug.add(enter_shutdown)
+
+    shutdown = ShortcutLayer("SHUTDOWN", color=Color.APPMODE_SHUTDOWN)
+    shutdown.add(action("c", "Cold start", Actions.COLDSTART))
+    shutdown.add(action("w", "Warm start", Actions.WARMSTART))
+    shutdown.add(action("t", "Terminate", Actions.TERMINATE))
+    shutdown.add(exit_shutdown)
+
+    shortcuts.add(AppMode.NORMAL, normal)
+    shortcuts.add(AppMode.DEBUG, debug)
+    shortcuts.add(AppMode.SHUTDOWN, shutdown)
+
+    shortcuts.add_global(
+        action("d", "Toggle DLIST", Actions.TOGGLE_DLIST_INSPECT))
+    shortcuts.add_global(action("q", "Quit", Actions.QUIT))
 
 
 def main(scr, socket_path):
@@ -55,76 +93,6 @@ def main(scr, socket_path):
         top.reshape(x=0, y=0, w=w, h=1)
         bottom.reshape(x=0, y=h - 1, w=w, h=1)
 
-    def build_shortcuts():
-        step = Shortcut(
-            curses.KEY_F0 +
-            5, "Step", lambda: dispatcher.dispatch(Actions.STEP)
-        )
-        step_vblank = Shortcut(
-            curses.KEY_F0 + 6,
-            "Step VBLANK",
-            lambda: dispatcher.dispatch(Actions.STEP_VBLANK),
-        )
-        pause = Shortcut(
-            curses.KEY_F0 + 8,
-            "Pause",
-            lambda: dispatcher.dispatch(Actions.PAUSE),
-        )
-        cont = Shortcut(
-            curses.KEY_F0 + 8,
-            "Continue",
-            lambda: dispatcher.dispatch(Actions.CONTINUE),
-        )
-        enter_shutdown = Shortcut(
-            27, "Shutdown", lambda: dispatcher.dispatch(Actions.ENTER_SHUTDOWN)
-        )
-        exit_shutdown = Shortcut(
-            27, "Back", lambda: dispatcher.dispatch(Actions.EXIT_SHUTDOWN)
-        )
-
-        normal = ShortcutLayer("NORMAL")
-        normal.add(step)
-        normal.add(step_vblank)
-        normal.add(pause)
-        normal.add(enter_shutdown)
-
-        debug = ShortcutLayer("DEBUG")
-        debug.add(step)
-        debug.add(step_vblank)
-        debug.add(cont)
-        debug.add(enter_shutdown)
-
-        coldstart = Shortcut(
-            "c", "Cold start", lambda: dispatcher.dispatch(Actions.COLDSTART)
-        )
-        warmstart = Shortcut(
-            "w", "Warm start", lambda: dispatcher.dispatch(Actions.WARMSTART)
-        )
-        terminate = Shortcut(
-            "t", "Terminate", lambda: dispatcher.dispatch(Actions.TERMINATE)
-        )
-
-        shutdown = ShortcutLayer("SHUTDOWN")
-        shutdown.add(coldstart)
-        shutdown.add(warmstart)
-        shutdown.add(terminate)
-        shutdown.add(exit_shutdown)
-
-        shortcuts.add(AppMode.NORMAL, normal)
-        shortcuts.add(AppMode.DEBUG, debug)
-        shortcuts.add(AppMode.SHUTDOWN, shutdown)
-
-        shortcuts.add_global(
-            Shortcut(
-                "d",
-                "Toggle DLIST",
-                lambda: dispatcher.dispatch(Actions.TOGGLE_DLIST_INSPECT),
-            )
-        )
-        shortcuts.add_global(
-            Shortcut("q", "Quit", lambda: dispatcher.dispatch(Actions.QUIT))
-        )
-
     app = App(screen=Screen(scr, layout_initializer=init_screen))
 
     input_processor = ShortcutInput(shortcuts, dispatcher)
@@ -137,7 +105,7 @@ def main(scr, socket_path):
     app.add_component(display_list)
     app.add_component(screen_inspector)
 
-    build_shortcuts()
+    build_shortcuts(dispatcher)
     app.loop()
 
 

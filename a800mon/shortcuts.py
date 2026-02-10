@@ -1,5 +1,7 @@
 import curses
 
+from .ui import Color
+
 
 class ShortcutLayerNotFound(Exception):
     pass
@@ -47,8 +49,9 @@ class Shortcut:
 
 
 class ShortcutLayer:
-    def __init__(self, name=""):
+    def __init__(self, name="", color: Color = Color.APPMODE):
         self.name = name
+        self.color = color
         self._shortcuts = {}
 
     def add(self, shortcut: Shortcut):
