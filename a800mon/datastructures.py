@@ -191,7 +191,7 @@ class ScreenBuffer:
                 if start <= cur < stop:
                     take = min(remaining, stop - cur)
                     buf_start = offset + (cur - start)
-                    parts.append(self.buffer[buf_start : buf_start + take])
+                    parts.append(self.buffer[buf_start: buf_start + take])
                     cur += take
                     remaining -= take
                     break
@@ -225,11 +225,12 @@ class Memory:
             per_line = max(1, int(columns))
         for offset in range(0, length, per_line):
             addr = (self.start + offset) & 0xFFFF
-            chunk = self.buffer[offset : offset + per_line]
+            chunk = self.buffer[offset: offset + per_line]
             parts = [f"{addr:04X}:"]
             if show_hex:
                 hex_width = per_line * 3 - 1
-                hex_bytes = " ".join(f"{b:02X}" for b in chunk).ljust(hex_width)
+                hex_bytes = " ".join(
+                    f"{b:02X}" for b in chunk).ljust(hex_width)
                 parts.append(hex_bytes)
             if show_ascii:
                 if use_atascii:
@@ -237,7 +238,9 @@ class Memory:
                         ATASCII[screen_to_atascii(b) & 0x7F] for b in chunk
                     )
                 else:
-                    ascii_bytes = "".join(chr(b) if 32 <= b <= 126 else "." for b in chunk)
+                    ascii_bytes = "".join(
+                        chr(b) if 32 <= b <= 126 else "." for b in chunk
+                    )
                 parts.append(ascii_bytes)
             lines.append("  ".join(parts))
         return "\n".join(lines)

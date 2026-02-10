@@ -47,6 +47,8 @@ class Command(enum.Enum):
     WARMSTART = "warmstart"
     REMOVECARTRIGE = "removecartrige"
     STOP_EMULATOR = "stop_emulator"
+    REMOVE_TAPE = "remove_tape"
+    REMOVE_DISKS = "remove_disks"
 
 
 class RpcClient:
@@ -66,7 +68,8 @@ class RpcClient:
             self.last_error = None
 
         try:
-            status, data = self._transport.send(internal_command, payload=payload)
+            status, data = self._transport.send(
+                internal_command, payload=payload)
         except (ConnectionError, ConnectionResetError) as ex:
             self.last_error = ex
             raise ConnectionError(ex)

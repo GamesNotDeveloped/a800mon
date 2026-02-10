@@ -16,6 +16,12 @@ class Component:
         return False
 
 
+class RpcComponent(Component):
+    def __init__(self, rpc, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.rpc = rpc
+
+
 class VisualComponent(Component):
     def __init__(self, window):
         self.window = window

@@ -5,13 +5,8 @@ import sys
 
 from .atascii import screen_to_atascii
 from .datastructures import CpuState, Memory
-from .displaylist import (
-    DMACTL_ADDR,
-    DMACTL_HW_ADDR,
-    DLPTRS_ADDR,
-    DisplayListMemoryMapper,
-    decode_displaylist,
-)
+from .displaylist import (DLPTRS_ADDR, DMACTL_ADDR, DMACTL_HW_ADDR,
+                          DisplayListMemoryMapper, decode_displaylist)
 from .main import run as run_monitor
 from .rpc import Command, RpcClient
 from .socket import SocketTransport
@@ -27,7 +22,8 @@ def _parse_args(argv):
     )
     subparsers = parser.add_subparsers(dest="cmd", metavar="cmd")
 
-    monitor = subparsers.add_parser("monitor", help="Run the curses monitor UI.")
+    monitor = subparsers.add_parser(
+        "monitor", help="Run the curses monitor UI.")
     monitor.set_defaults(func=_cmd_monitor)
 
     run = subparsers.add_parser("run", help="Run a file via RPC.")
@@ -46,25 +42,29 @@ def _parse_args(argv):
     cont = subparsers.add_parser("continue", help="Continue emulation.")
     cont.set_defaults(func=_cmd_continue)
 
-    coldstart = subparsers.add_parser("coldstart", help="Cold start emulation.")
+    coldstart = subparsers.add_parser(
+        "coldstart", help="Cold start emulation.")
     coldstart.set_defaults(func=_cmd_coldstart)
 
-    warmstart = subparsers.add_parser("warmstart", help="Warm start emulation.")
+    warmstart = subparsers.add_parser(
+        "warmstart", help="Warm start emulation.")
     warmstart.set_defaults(func=_cmd_warmstart)
 
     removecartrige = subparsers.add_parser(
-        "removecartrige", help="Remove cartridge."
-    )
+        "removecartrige", help="Remove cartridge.")
     removecartrige.set_defaults(func=_cmd_removecartrige)
 
-    stopemulator = subparsers.add_parser(
-        "stopemulator", help="Stop emulator."
-    )
+    stopemulator = subparsers.add_parser("stopemulator", help="Stop emulator.")
     stopemulator.set_defaults(func=_cmd_stop_emulator)
 
-    dump_dlist = subparsers.add_parser(
-        "dump_dlist", help="Dump display list."
-    )
+    removetape = subparsers.add_parser("removetape", help="Remove cassette.")
+    removetape.set_defaults(func=_cmd_removetape)
+
+    removedisks = subparsers.add_parser(
+        "removedisks", help="Remove all disks.")
+    removedisks.set_defaults(func=_cmd_removedisks)
+
+    dump_dlist = subparsers.add_parser("dump_dlist", help="Dump display list.")
     dump_dlist.set_defaults(func=_cmd_dump_dlist)
 
     cpustate = subparsers.add_parser("cpustate", help="Show CPU state.")
@@ -222,6 +222,16 @@ def _cmd_stop_emulator(args):
     return 0
 
 
+def _cmd_removetape(args):
+    _rpc(args.socket).call(Command.REMOVE_TAPE)
+    return 0
+
+
+def _cmd_removedisks(args):
+    _rpc(args.socket).call(Command.REMOVE_DISKS)
+    return 0
+
+
 def _cmd_dump_dlist(args):
     rpc = _rpc(args.socket)
     start_addr = rpc.read_vector(DLPTRS_ADDR)
@@ -245,8 +255,7 @@ def _cmd_dump_dlist(args):
             length = end - start
             last = (end - 1) & 0xFFFF
             sys.stdout.write(
-                f"#%d {start:04X}-{last:04X} len={length:04X} antic={mode}\n"
-                % idx
+                f"#%d {start:04X}-{last:04X} len={length:04X} antic={mode}\n" % idx
             )
     return 0
 
@@ -257,9 +266,13 @@ def _cmd_cpustate(args):
 
 
 def _cmd_status(args):
-    data = _rpc(args.socket).call(Command.STATUS)
-    if data:
-        sys.stdout.buffer.write(data)
+    st = _rpc(args.socket).status()
+    paused = "yes" if st.paused else "no"
+    crashed = "yes" if st.crashed else "no"
+    sys.stdout.write(
+        "paused=%s crashed=%s emu_ms=%d reset_ms=%d\n"
+        % (paused, crashed, st.emu_ms, st.reset_ms)
+    )
     return 0
 
 
@@ -317,8 +330,7 @@ def _cmd_screen(args):
             length = end - start
             last = (end - 1) & 0xFFFF
             sys.stdout.write(
-                f"#%d {start:04X}-{last:04X} len={length:04X} antic={mode}\n"
-                % idx
+                f"#%d {start:04X}-{last:04X} len={length:04X} antic={mode}\n" % idx
             )
         return 0
     seg_num = args.segment
@@ -365,8 +377,6 @@ def _print_cpu_state(rpc):
     ypos, xpos, pc, a, x, y, s, p = rpc.cpu_state()
     cpu = CpuState(ypos=ypos, xpos=xpos, pc=pc, a=a, x=x, y=y, s=s, p=p)
     sys.stdout.write(repr(cpu) + "\n")
-
-
 
 
 def _parse_hex(value):

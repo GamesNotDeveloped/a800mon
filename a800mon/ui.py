@@ -161,8 +161,7 @@ class Window:
             self.outer.attroff(focus_attr)
             if self.title:
                 self.outer.addstr(
-                    0, 2, f" {self.title[: self._iw - 6]} ", focus_attr
-                )
+                    0, 2, f" {self.title[: self._iw - 6]} ", focus_attr)
         self._dirty = True
 
     def reshape(self, x, y, w, h):
@@ -228,7 +227,7 @@ class Window:
                     cy += 1
                     continue
                 break
-            ctxt = text[c : c + cut]
+            ctxt = text[c: c + cut]
             try:
                 self.inner.addstr(cy, cx, ctxt, attr)
             except curses.error:
@@ -293,6 +292,7 @@ def init_color_pairs():
     curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(2, curses.COLOR_WHITE, curses.COLOR_RED)
     curses.init_pair(3, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)
 
 
 class Color(enum.Enum):
@@ -302,6 +302,8 @@ class Color(enum.Enum):
     ERROR = (2, curses.A_BLINK)
     TOPBAR = (0, curses.A_REVERSE)
     FOCUS = (3, curses.A_BOLD)
+    APPMODE = (4, curses.A_BOLD | curses.A_REVERSE | curses.A_DIM)
+    SHORTCUT = (0, curses.A_REVERSE)
 
     def attr(self):
         return curses.color_pair(self.value[0]) | self.value[1]
