@@ -2,10 +2,9 @@ import curses
 import time
 
 from .app import VisualRpcComponent
-from .appstate import shortcuts, state
+from .appstate import state
 from .datastructures import DisplayList, DisplayListEntry
 from .rpc import RpcException
-from .shortcuts import Shortcut
 from .ui import Color
 
 DMACTL_ADDR = 0x022F
@@ -182,8 +181,6 @@ class DisplayListViewer(VisualRpcComponent):
         self._last_update = None
         self._inspect = False
         self._dmactl = 0
-        shortcuts.add_global(
-            Shortcut("d", "Toggle DLIST", self.toggle_inspect))
 
     def toggle_inspect(self):
         self._inspect = not self._inspect
