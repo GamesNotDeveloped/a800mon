@@ -1,3 +1,6 @@
+from .memorymap import comment_for_asm
+
+
 def disasm_6502(start_addr: int, data: bytes) -> list[str]:
     dis, start = _build_disassembler(start_addr, data)
     lines = []
@@ -14,7 +17,8 @@ def disasm_6502(start_addr: int, data: bytes) -> list[str]:
             size = remain
 
         raw = data[consumed: consumed + size]
-        lines.append(f"{pc:04X}: {_fmt_bytes(raw):<8} {text}")
+        asm_text = _with_symbol_comment(str(text))
+        lines.append(f"{pc:04X}: {_fmt_bytes(raw):<8} {asm_text}")
 
         consumed += size
         pc = (pc + size) & 0xFFFF
@@ -23,14 +27,19 @@ def disasm_6502(start_addr: int, data: bytes) -> list[str]:
 
 
 def disasm_6502_one(start_addr: int, data: bytes) -> str:
+    raw_text, asm_text = disasm_6502_one_parts(start_addr, data)
+    return f"{raw_text:<8} {asm_text}"
+
+
+def disasm_6502_one_parts(start_addr: int, data: bytes) -> tuple[str, str]:
     if not data:
-        return ""
+        return "", ""
     dis, start = _build_disassembler(start_addr, data)
     size, text = _decode_instruction(dis, start)
     if size < 1:
         size = 1
     raw = data[:size]
-    return f"{_fmt_bytes(raw):<8} {text}"
+    return _fmt_bytes(raw), _with_symbol_comment(str(text))
 
 
 def _build_disassembler(start_addr: int, data: bytes):
@@ -64,3 +73,10 @@ def _decode_instruction(dis, addr: int) -> tuple[int, str]:
 
 def _fmt_bytes(raw: bytes) -> str:
     return " ".join(f"{b:02X}" for b in raw)
+
+
+def _with_symbol_comment(asm_text: str) -> str:
+    comment = comment_for_asm(asm_text)
+    if not comment:
+        return asm_text
+    return f"{asm_text:<18} {comment}"

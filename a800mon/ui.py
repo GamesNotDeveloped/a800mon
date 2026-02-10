@@ -164,6 +164,27 @@ class Window:
                     0, 2, f" {self.title[: self._iw - 6]} ", focus_attr)
         self._dirty = True
 
+    def set_title(self, title):
+        if title == self.title:
+            return
+        self.title = title
+        self.redraw_title()
+
+    def redraw_title(self):
+        if not self._border or not hasattr(self, "outer"):
+            self._dirty = True
+            return
+        focus_attr = Color.WINDOW_TITLE.attr()
+        if getattr(self, "_screen", None) and self._screen.focused is self:
+            focus_attr = Color.FOCUS.attr()
+        self.outer.attron(focus_attr)
+        # Rewrite only top border line to avoid full box redraw on title updates.
+        self.outer.hline(0, 1, curses.ACS_HLINE, self._iw)
+        if self.title:
+            self.outer.addstr(0, 2, f" {self.title[: self._iw - 6]} ", focus_attr)
+        self.outer.attroff(focus_attr)
+        self._dirty = True
+
     def reshape(self, x, y, w, h):
         self.x = x
         self.y = y
@@ -308,6 +329,7 @@ class Color(enum.Enum):
     APPMODE_DEBUG = (6, curses.A_BOLD | curses.A_REVERSE | curses.A_DIM)
     APPMODE_SHUTDOWN = (5, curses.A_BOLD | curses.A_REVERSE | curses.A_DIM)
     SHORTCUT = (0, curses.A_REVERSE)
+    MNEMONIC = (4, curses.A_BOLD)
 
     def attr(self):
         return curses.color_pair(self.value[0]) | self.value[1]

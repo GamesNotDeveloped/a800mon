@@ -6,6 +6,7 @@ from .app import App, Component
 from .appstate import AppMode, shortcuts, state
 from .cpustate import CpuStateViewer
 from .displaylist import DisplayListViewer
+from .history import HistoryViewer
 from .rpc import RpcClient
 from .screenbuffer import ScreenBufferInspector
 from .shortcutbar import ShortcutBar
@@ -37,10 +38,12 @@ def main(scr, socket_path):
     wcpu = Window(title="CPU State")
     wdlist = Window(title="DisplayList")
     wscreen = Window(title="Screen Buffer (ATASCII)")
+    whistory = Window(title="History")
     top = Window(border=False)
     bottom = Window(border=False)
 
     screen_inspector = ScreenBufferInspector(rpc, wscreen)
+    history_view = HistoryViewer(rpc, whistory)
     display_list = DisplayListViewer(rpc, wdlist)
     cpu = CpuStateViewer(rpc, wcpu)
     topbar = TopBar(rpc, top)
@@ -51,7 +54,27 @@ def main(scr, socket_path):
         w, h = scr.size
         wcpu.reshape(x=0, y=h - 5, w=w, h=3)
         wdlist.reshape(x=0, y=2, w=40, h=wcpu.y - 3)
-        wscreen.reshape(x=wdlist.x + wdlist.w + 2, y=2, w=60, h=wcpu.y - 3)
+        right_x = wdlist.x + wdlist.w + 2
+        right_total = max(1, w - right_x)
+        gap = 2
+        if right_total <= gap + 2:
+            screen_w = 1
+            history_w = 1
+        else:
+            screen_w = (right_total - gap) * 2 // 3
+            history_w = right_total - gap - screen_w
+            if screen_w < 1:
+                screen_w = 1
+            if history_w < 1:
+                history_w = 1
+                screen_w = max(1, right_total - gap - history_w)
+        wscreen.reshape(x=right_x, y=2, w=screen_w, h=wcpu.y - 3)
+        whistory.reshape(
+            x=wscreen.x + wscreen.w + gap,
+            y=2,
+            w=history_w,
+            h=wcpu.y - 3,
+        )
         top.reshape(x=0, y=0, w=w, h=1)
         bottom.reshape(x=0, y=h - 1, w=w, h=1)
 
@@ -119,6 +142,7 @@ def main(scr, socket_path):
     app.add_component(cpu)
     app.add_component(display_list)
     app.add_component(screen_inspector)
+    app.add_component(history_view)
 
     build_shortcuts()
     app.loop()
