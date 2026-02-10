@@ -121,17 +121,30 @@ def main(scr, socket_path):
         waddr_input,
         color=Color.ADDRESS,
         on_change=lambda value: (
-            dispatcher.dispatch(Actions.SET_DISASSEMBLY_ADDR, value)
+            (
+                disassembly_view.on_address_changed(value),
+                dispatcher.dispatch(Actions.SET_DISASSEMBLY_ADDR, value),
+            )
             if value is not None
             else None
         ),
         on_enter=lambda value: (
-            dispatcher.dispatch(Actions.SET_DISASSEMBLY_ADDR, value)
+            (
+                disassembly_view.on_address_changed(value),
+                dispatcher.dispatch(Actions.SET_DISASSEMBLY_ADDR, value),
+            )
             if value is not None
             else None
         ),
     )
-    disassembly_view.bind_input(screen, input_manager, address_input)
+    disassembly_view.bind_input(
+        screen,
+        input_manager,
+        address_input,
+        set_address=lambda addr: dispatcher.dispatch(
+            Actions.SET_DISASSEMBLY_ADDR, addr
+        ),
+    )
 
     def build_shortcuts():
         def action(key, label, action):

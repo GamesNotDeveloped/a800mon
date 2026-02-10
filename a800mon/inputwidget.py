@@ -27,8 +27,10 @@ class InputWidget(VisualComponent):
         return self._buffer
 
     def activate(self, initial_buffer: str = ""):
-        self._buffer = ""
-        self.set_buffer(initial_buffer)
+        text = str(initial_buffer)
+        if self.max_length is not None:
+            text = text[: self.max_length]
+        self._buffer = text
 
     def deactivate(self):
         self._buffer = ""
