@@ -180,7 +180,6 @@ class DisplayListViewer(VisualRpcComponent):
         super().__init__(*args, **kwargs)
         self._last_update = None
         self._dmactl = 0
-        self._last_inspect = False
 
     def update(self):
         if self._last_update and time.time() - self._last_update < 0.1:
@@ -197,29 +196,24 @@ class DisplayListViewer(VisualRpcComponent):
             dlist = decode_displaylist(start_addr, dump)
             store.set_dlist(dlist, dmactl)
             self._dmactl = dmactl
+            if state.displaylist_inspect:
+                segs = dlist.screen_segments(dmactl)
+                if not segs:
+                    store.set_dlist_selected_region(None)
+                elif state.dlist_selected_region is None:
+                    store.set_dlist_selected_region(0)
+                elif state.dlist_selected_region >= len(segs):
+                    store.set_dlist_selected_region(len(segs) - 1)
 
     def handle_input(self, ch):
         return False
 
     def render(self, force_redraw=False):
-        if state.displaylist_inspect != self._last_inspect:
-            self._last_inspect = state.displaylist_inspect
-            if getattr(self.window, "_screen", None):
-                if state.displaylist_inspect:
-                    self.window._screen.focus(self.window)
-                else:
-                    self.window._screen.focus(None)
-
         if state.displaylist_inspect:
             segs = state.dlist.screen_segments(self._dmactl)
             if not segs:
-                store.set_dlist_selected_region(None)
                 self.window.clear_to_bottom()
                 return
-            if state.dlist_selected_region is None:
-                store.set_dlist_selected_region(0)
-            if state.dlist_selected_region >= len(segs):
-                store.set_dlist_selected_region(len(segs) - 1)
             for idx, (start, end, mode) in enumerate(segs):
                 length = end - start
                 last = (end - 1) & 0xFFFF
