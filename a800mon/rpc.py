@@ -1,6 +1,8 @@
 import enum
 import struct
 
+from .datastructures import CpuHistoryEntry
+
 
 class RpcException(Exception):
     pass
@@ -49,6 +51,7 @@ class Command(enum.Enum):
     STOP_EMULATOR = "stop_emulator"
     REMOVE_TAPE = "remove_tape"
     REMOVE_DISKS = "remove_disks"
+    HISTORY = "history"
 
 
 class RpcClient:
@@ -125,3 +128,23 @@ class RpcClient:
     def cpu_state(self):
         data = self.call(Command.CPU_STATE)
         return struct.unpack("<HHHBBBBB", data)
+
+    def history(self):
+        data = self.call(Command.HISTORY)
+        if len(data) < 1:
+            raise RpcException("HISTORY payload too short")
+        count = data[0]
+        expected = 1 + count * 7
+        if len(data) < expected:
+            raise RpcException(
+                f"HISTORY payload too short: got={len(data)} expected={expected}"
+            )
+        entries = []
+        offset = 1
+        for _ in range(count):
+            y, x, pc, op0, op1, op2 = struct.unpack_from("<BBHBBB", data, offset)
+            entries.append(
+                CpuHistoryEntry(y=y, x=x, pc=pc, op0=op0, op1=op1, op2=op2)
+            )
+            offset += 7
+        return entries

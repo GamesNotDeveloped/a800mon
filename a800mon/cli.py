@@ -3,7 +3,7 @@ import os
 import sys
 
 from .datastructures import CpuState
-from .disasm import disasm_6502
+from .disasm import disasm_6502, disasm_6502_one
 from .displaylist import (DLPTRS_ADDR, DMACTL_ADDR, DMACTL_HW_ADDR,
                           DisplayListMemoryMapper, decode_displaylist)
 from .main import run as run_monitor
@@ -69,6 +69,16 @@ def _parse_args(argv):
 
     cpustate = subparsers.add_parser("cpustate", help="Show CPU state.")
     cpustate.set_defaults(func=_cmd_cpustate)
+
+    history = subparsers.add_parser("history", help="Show CPU execution history.")
+    history.add_argument(
+        "-n",
+        "--count",
+        type=int,
+        default=None,
+        help="Limit output to last N entries.",
+    )
+    history.set_defaults(func=_cmd_history)
 
     status = subparsers.add_parser("status", help="Get status.")
     status.set_defaults(func=_cmd_status)
@@ -267,6 +277,22 @@ def _cmd_dump_dlist(args):
 
 def _cmd_cpustate(args):
     _print_cpu_state(_rpc(args.socket))
+    return 0
+
+
+def _cmd_history(args):
+    entries = _rpc(args.socket).history()
+    if args.count is not None:
+        n = max(0, int(args.count))
+        entries = entries[-n:] if n else []
+    for idx, entry in enumerate(entries, start=1):
+        try:
+            dis = disasm_6502_one(entry.pc, entry.opbytes)
+        except RuntimeError:
+            dis = f"{entry.op0:02X} {entry.op1:02X} {entry.op2:02X}"
+        sys.stdout.write(
+            f"{idx:03d} Y={entry.y:02X} X={entry.x:02X} PC={entry.pc:04X}  {dis}\n"
+        )
     return 0
 
 

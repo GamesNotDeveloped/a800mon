@@ -23,6 +23,7 @@ class SocketCommand(enum.IntEnum):
     STOP_EMULATOR = 16
     REMOVE_TAPE = 17
     REMOVE_DISKS = 18
+    HISTORY = 19
 
 
 SUPPORTED_COMMANDS = {
@@ -44,6 +45,7 @@ SUPPORTED_COMMANDS = {
     Command.STOP_EMULATOR: 16,
     Command.REMOVE_TAPE: 17,
     Command.REMOVE_DISKS: 18,
+    Command.HISTORY: 19,
 }
 
 

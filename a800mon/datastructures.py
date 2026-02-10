@@ -1,6 +1,21 @@
 import dataclasses
 import typing
 
+
+@dataclasses.dataclass(frozen=True)
+class CpuHistoryEntry:
+    y: int
+    x: int
+    pc: int
+    op0: int
+    op1: int
+    op2: int
+
+    @property
+    def opbytes(self) -> bytes:
+        return bytes((self.op0, self.op1, self.op2))
+
+
 @dataclasses.dataclass
 class CpuState:
     xpos: int = 0
