@@ -116,19 +116,15 @@ class ScreenBufferInspector(VisualRpcComponent):
             self.window.title = f"Screen Buffer ({mode})"
             self.window.redraw()
 
+        self.window.cursor = 0, 0
         segs = state.dlist.screen_segments(self._dmactl)
         active_seg = None
         if state.dlist_selected_region is not None and segs:
             if 0 <= state.dlist_selected_region < len(segs):
                 active_seg = segs[state.dlist_selected_region]
-        for rownum, row_info in enumerate(state.screen_buffer.row_slices):
-            if active_seg is not None:
-                start, end, _mode = active_seg
-                if not (start <= row_info[0] < end):
-                    continue
-            if not row_info:
-                continue
-            if rownum > self.window._ih - 1:
+        printed_rows = 0
+        for row_info in state.screen_buffer.row_slices:
+            if printed_rows >= self.window._ih:
                 break
             if isinstance(row_info, tuple):
                 if isinstance(row_info[0], slice):
@@ -140,6 +136,10 @@ class ScreenBufferInspector(VisualRpcComponent):
             else:
                 start_addr = state.screen_buffer.start_address + row_info.start
                 length = row_info.stop - row_info.start
+            if active_seg is not None:
+                start, end, _mode = active_seg
+                if not (start <= start_addr < end):
+                    continue
             if length <= 0:
                 continue
             row = state.screen_buffer.get_range(start_addr, length)[
@@ -149,7 +149,9 @@ class ScreenBufferInspector(VisualRpcComponent):
             for i, b in enumerate(row):
                 ac, attr = _render_char(b, state.use_atascii)
                 self.window.print_char(ac, attr=attr)
+            self.window.clear_to_eol()
             self.window.newline()
+            printed_rows += 1
         self.window.clear_to_bottom()
 
         if not self._inspect:
