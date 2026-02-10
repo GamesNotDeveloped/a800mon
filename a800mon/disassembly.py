@@ -1,6 +1,6 @@
 import time
 
-from .app import InputComponent, VisualRpcComponent
+from .app import VisualRpcComponent
 from .appstate import state
 from .disasm import DecodedInstruction, disasm_6502_decoded
 from .rpc import RpcException
@@ -14,6 +14,14 @@ class DisassemblyViewer(VisualRpcComponent):
         self._last_update = 0.0
         self._last_addr = None
         self._lines = []
+        self._screen = None
+        self._input_manager = None
+        self._address_widget = None
+
+    def bind_input(self, screen, input_manager, address_widget):
+        self._screen = screen
+        self._input_manager = input_manager
+        self._address_widget = address_widget
 
     def update(self):
         if not state.disassembly_enabled:
@@ -48,6 +56,23 @@ class DisassemblyViewer(VisualRpcComponent):
             self.window.newline()
         self.window.clear_to_bottom()
 
+    def handle_input(self, ch):
+        if state.input_focus:
+            return False
+        if ch != ord("/"):
+            return False
+        if not self.window.visible:
+            return False
+        if self._screen is None or self._screen.focused is not self.window:
+            return False
+        if self._input_manager is None or self._address_widget is None:
+            return False
+        self._input_manager.open(
+            self._address_widget,
+            f"{state.disassembly_addr & 0xFFFF:04X}",
+        )
+        return True
+
     def _print_asm(self, ins: DecodedInstruction):
         if not ins.mnemonic:
             return
@@ -66,26 +91,3 @@ class DisassemblyViewer(VisualRpcComponent):
             return
         self.window.print(" ")
         self.window.print(ins.comment)
-
-
-class DisassemblyInputHandler(InputComponent):
-    def __init__(self, screen, disasm_window, input_manager, address_widget):
-        self._screen = screen
-        self._disasm_window = disasm_window
-        self._input_manager = input_manager
-        self._address_widget = address_widget
-
-    def handle_input(self, ch):
-        if state.input_focus:
-            return False
-        if ch != ord("/"):
-            return False
-        if not self._disasm_window.visible:
-            return False
-        if self._screen.focused is not self._disasm_window:
-            return False
-        self._input_manager.open(
-            self._address_widget,
-            f"{state.disassembly_addr & 0xFFFF:04X}",
-        )
-        return True

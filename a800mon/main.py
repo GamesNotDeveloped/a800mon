@@ -5,7 +5,7 @@ from .actions import ActionDispatcher, Actions, ShortcutInput
 from .app import App, Component
 from .appstate import AppMode, shortcuts, state
 from .cpustate import CpuStateViewer
-from .disassembly import DisassemblyInputHandler, DisassemblyViewer
+from .disassembly import DisassemblyViewer
 from .displaylist import DisplayListViewer
 from .history import HistoryViewer
 from .inputwidget import AddressInputWidget, InputWidgetManager
@@ -131,12 +131,7 @@ def main(scr, socket_path):
             else None
         ),
     )
-    disasm_input = DisassemblyInputHandler(
-        screen=screen,
-        disasm_window=wdisasm,
-        input_manager=input_manager,
-        address_widget=address_input,
-    )
+    disassembly_view.bind_input(screen, input_manager, address_input)
 
     def build_shortcuts():
         def action(key, label, action):
@@ -208,7 +203,6 @@ def main(scr, socket_path):
     input_processor = ShortcutInput(shortcuts, dispatcher)
     app.add_component(dispatcher)
     app.add_component(input_manager)
-    app.add_component(disasm_input)
     app.add_component(input_processor)
     app.add_component(topbar)
     app.add_component(appmode_updater)
