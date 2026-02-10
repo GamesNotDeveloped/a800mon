@@ -17,19 +17,6 @@ class ShortcutBar(VisualComponent):
         self.window.print(key_text, attr=Color.SHORTCUT.attr())
         self.window.print(label_text, attr=Color.TEXT.attr())
 
-    def handle_input(self, ch):
-        if shortcuts.has_global(ch):
-            shortcuts.get_global(ch).callback()
-            return True
-
-        layer = shortcuts.get(state.active_mode)
-
-        if layer and layer.has(ch):
-            layer.get(ch).callback()
-            return True
-
-        return False
-
     def render(self, force_redraw=False):
         if force_redraw or not self._last_mode == state.active_mode:
             self.window.cursor = 0, 0

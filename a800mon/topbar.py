@@ -1,7 +1,7 @@
 import time
 
 from .app import VisualRpcComponent
-from .appstate import state
+from .appstate import state, store
 from .rpc import RpcException
 from .ui import Color
 
@@ -58,10 +58,7 @@ class TopBar(VisualRpcComponent):
             status = self.rpc.status()
         except RpcException:
             return
-        state.paused = status.paused
-        state.emu_ms = status.emu_ms
-        state.reset_ms = status.reset_ms
-        state.crashed = status.crashed
+        store.set_status(status.paused, status.emu_ms, status.reset_ms, status.crashed)
         self._last_status_ts = time.time()
         self._changed = True
 

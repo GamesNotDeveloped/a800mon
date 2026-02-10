@@ -1,11 +1,12 @@
 import curses
 
 from . import debug
-from .app import App, Component, StopLoop
+from .actions import ActionDispatcher, Actions, ShortcutInput
+from .app import App, Component
 from .appstate import AppMode, shortcuts, state
 from .cpustate import CpuStateViewer
 from .displaylist import DisplayListViewer
-from .rpc import Command, RpcClient, RpcException
+from .rpc import RpcClient
 from .screenbuffer import ScreenBufferInspector
 from .shortcutbar import ShortcutBar
 from .shortcuts import Shortcut, ShortcutLayer
@@ -15,17 +16,23 @@ from .ui import Screen, Window
 
 
 class AppModeUpdater(Component):
+    def __init__(self, dispatcher):
+        self._dispatcher = dispatcher
+        self._last_paused = None
+
     def update(self):
-        if state.active_mode in (AppMode.DEBUG, AppMode.NORMAL):
-            state.active_mode = AppMode.DEBUG if state.paused else AppMode.NORMAL
-
-
-def exit_app():
-    raise StopLoop
+        if self._last_paused is None:
+            self._last_paused = state.paused
+            self._dispatcher.dispatch(Actions.SYNC_MODE)
+            return
+        if state.paused != self._last_paused:
+            self._last_paused = state.paused
+            self._dispatcher.dispatch(Actions.SYNC_MODE)
 
 
 def main(scr, socket_path):
     rpc = RpcClient(SocketTransport(socket_path))
+    dispatcher = ActionDispatcher(rpc)
 
     wcpu = Window(title="CPU State")
     wdlist = Window(title="DisplayList")
@@ -36,8 +43,8 @@ def main(scr, socket_path):
     screen_inspector = ScreenBufferInspector(rpc, wscreen)
     display_list = DisplayListViewer(rpc, wdlist)
     cpu = CpuStateViewer(rpc, wcpu)
-    appmode_updater = AppModeUpdater()
     topbar = TopBar(rpc, top)
+    appmode_updater = AppModeUpdater(dispatcher)
     shortcutbar = ShortcutBar(bottom)
 
     def init_screen(scr):
@@ -48,45 +55,32 @@ def main(scr, socket_path):
         top.reshape(x=0, y=0, w=w, h=1)
         bottom.reshape(x=0, y=h - 1, w=w, h=1)
 
-    def build_shortcuts(rpc):
-        def call_rpc(command):
-            def fn():
-                try:
-                    rpc.call(command)
-                except RpcException:
-                    pass
-
-            return fn
-
-        def exit_shutdown_mode():
-            state.active_mode = AppMode.DEBUG if state.paused else AppMode.NORMAL
-
-        def enter_shutdown_mode():
-            state.active_mode = AppMode.SHUTDOWN
-
-        def change_mode(mode: AppMode, callback):
-            def fn():
-                state.active_mode = mode
-                callback()
-
-            return fn
-
-        step = Shortcut(curses.KEY_F0 + 5, "Step", call_rpc(Command.STEP))
+    def build_shortcuts():
+        step = Shortcut(
+            curses.KEY_F0 +
+            5, "Step", lambda: dispatcher.dispatch(Actions.STEP)
+        )
         step_vblank = Shortcut(
-            curses.KEY_F0 + 6, "Step VBLANK", call_rpc(Command.STEP_VBLANK)
+            curses.KEY_F0 + 6,
+            "Step VBLANK",
+            lambda: dispatcher.dispatch(Actions.STEP_VBLANK),
         )
         pause = Shortcut(
             curses.KEY_F0 + 8,
             "Pause",
-            change_mode(AppMode.DEBUG, call_rpc(Command.PAUSE)),
+            lambda: dispatcher.dispatch(Actions.PAUSE),
         )
         cont = Shortcut(
             curses.KEY_F0 + 8,
             "Continue",
-            change_mode(AppMode.NORMAL, call_rpc(Command.CONTINUE)),
+            lambda: dispatcher.dispatch(Actions.CONTINUE),
         )
-        enter_shutdown = Shortcut(27, "Shutdown", enter_shutdown_mode)
-        exit_shutdown = Shortcut(27, "Back", exit_shutdown_mode)
+        enter_shutdown = Shortcut(
+            27, "Shutdown", lambda: dispatcher.dispatch(Actions.ENTER_SHUTDOWN)
+        )
+        exit_shutdown = Shortcut(
+            27, "Back", lambda: dispatcher.dispatch(Actions.EXIT_SHUTDOWN)
+        )
 
         normal = ShortcutLayer("NORMAL")
         normal.add(step)
@@ -100,21 +94,14 @@ def main(scr, socket_path):
         debug.add(cont)
         debug.add(enter_shutdown)
 
-        def back_to_main(callback):
-            def fn():
-                callback()
-                exit_shutdown_mode()
-
-            return fn
-
         coldstart = Shortcut(
-            "c", "Cold start", back_to_main(call_rpc(Command.COLDSTART))
+            "c", "Cold start", lambda: dispatcher.dispatch(Actions.COLDSTART)
         )
         warmstart = Shortcut(
-            "w", "Warm start", back_to_main(call_rpc(Command.WARMSTART))
+            "w", "Warm start", lambda: dispatcher.dispatch(Actions.WARMSTART)
         )
         terminate = Shortcut(
-            "t", "Terminate", back_to_main(call_rpc(Command.STOP_EMULATOR))
+            "t", "Terminate", lambda: dispatcher.dispatch(Actions.TERMINATE)
         )
 
         shutdown = ShortcutLayer("SHUTDOWN")
@@ -127,20 +114,30 @@ def main(scr, socket_path):
         shortcuts.add(AppMode.DEBUG, debug)
         shortcuts.add(AppMode.SHUTDOWN, shutdown)
 
-        shortcuts.add_global(Shortcut("d", "Toggle DLIST",
-                             display_list.toggle_inspect))
-        shortcuts.add_global(Shortcut("q", "Quit", exit_app))
+        shortcuts.add_global(
+            Shortcut(
+                "d",
+                "Toggle DLIST",
+                lambda: dispatcher.dispatch(Actions.TOGGLE_DLIST_INSPECT),
+            )
+        )
+        shortcuts.add_global(
+            Shortcut("q", "Quit", lambda: dispatcher.dispatch(Actions.QUIT))
+        )
 
     app = App(screen=Screen(scr, layout_initializer=init_screen))
 
-    app.add_component(appmode_updater)
+    input_processor = ShortcutInput(shortcuts, dispatcher)
+    app.add_component(dispatcher)
+    app.add_component(input_processor)
     app.add_component(topbar)
+    app.add_component(appmode_updater)
     app.add_component(shortcutbar)
     app.add_component(cpu)
     app.add_component(display_list)
     app.add_component(screen_inspector)
 
-    build_shortcuts(rpc)
+    build_shortcuts()
     app.loop()
 
 

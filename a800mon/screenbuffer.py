@@ -3,7 +3,7 @@ import time
 
 from . import debug
 from .app import VisualRpcComponent
-from .appstate import state
+from .appstate import state, store
 from .atascii import atascii_to_curses, screen_to_atascii
 from .datastructures import ScreenBuffer
 from .displaylist import DMACTL_ADDR, DMACTL_HW_ADDR, DisplayListMemoryMapper
@@ -185,11 +185,13 @@ class ScreenBufferInspector(VisualRpcComponent):
             for s, e in fetch_ranges:
                 range_index.append((s, e, offset))
                 offset += e - s
-            state.screen_buffer = ScreenBuffer(
-                row_slices=row_slices,
-                buffer=buffer,
-                start_address=start_address,
-                range_index=range_index,
+            store.set_screen_buffer(
+                ScreenBuffer(
+                    row_slices=row_slices,
+                    buffer=buffer,
+                    start_address=start_address,
+                    range_index=range_index,
+                )
             )
             self._dmactl = dmactl
             self._last_update = time.time()

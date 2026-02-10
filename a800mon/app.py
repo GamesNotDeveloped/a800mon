@@ -1,8 +1,6 @@
 import curses
 import time
 
-from .appstate import state
-
 
 class StopLoop(Exception):
     pass
@@ -14,6 +12,9 @@ class Component:
 
     def handle_input(self, ch):
         return False
+
+    def post_render(self):
+        pass
 
 
 class RpcComponent(Component):
@@ -66,7 +67,11 @@ class App:
                 self.render_components()
 
                 time_diff = time.time() - start_time
-                state.monitor_frame_time_ms = int(time_diff * 1000.0)
+                try:
+                    from .appstate import store
+                    store.set_frame_time_ms(int(time_diff * 1000.0))
+                except Exception:
+                    pass
                 sleep_time = iter_time - time_diff
                 if sleep_time > 0:
                     time.sleep(sleep_time)
@@ -91,3 +96,5 @@ class App:
         for component in self._visual_components:
             component.render()
         self._screen.update()
+        for component in self._components:
+            component.post_render()

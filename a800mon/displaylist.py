@@ -2,7 +2,7 @@ import curses
 import time
 
 from .app import VisualRpcComponent
-from .appstate import state
+from .appstate import state, store
 from .datastructures import DisplayList, DisplayListEntry
 from .rpc import RpcException
 from .ui import Color
@@ -179,34 +179,8 @@ class DisplayListViewer(VisualRpcComponent):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._last_update = None
-        self._inspect = False
         self._dmactl = 0
-
-    def toggle_inspect(self):
-        self._inspect = not self._inspect
-        if not self._inspect:
-            state.dlist_selected_region = None
-            if getattr(self.window, "_screen", None):
-                self.window._screen.focus(None)
-        else:
-            if state.dlist_selected_region is None:
-                state.dlist_selected_region = 0
-            if getattr(self.window, "_screen", None):
-                self.window._screen.focus(self.window)
-
-    def _move_selection(self, delta):
-        if not self._inspect:
-            return
-        segs = state.dlist.screen_segments(self._dmactl)
-        if not segs:
-            state.dlist_selected_region = None
-            return
-        if state.dlist_selected_region is None:
-            state.dlist_selected_region = 0
-        else:
-            state.dlist_selected_region = max(
-                0, min(len(segs) - 1, state.dlist_selected_region + delta)
-            )
+        self._last_inspect = False
 
     def update(self):
         if self._last_update and time.time() - self._last_update < 0.1:
@@ -220,31 +194,32 @@ class DisplayListViewer(VisualRpcComponent):
         except RpcException:
             return
         else:
-            state.dlist = decode_displaylist(start_addr, dump)
+            dlist = decode_displaylist(start_addr, dump)
+            store.set_dlist(dlist, dmactl)
             self._dmactl = dmactl
 
     def handle_input(self, ch):
-        if not self._inspect:
-            return False
-        if ch in (ord("j"), curses.KEY_DOWN):
-            self._move_selection(1)
-            return True
-        if ch in (ord("k"), curses.KEY_UP):
-            self._move_selection(-1)
-            return True
         return False
 
     def render(self, force_redraw=False):
-        if self._inspect:
+        if state.displaylist_inspect != self._last_inspect:
+            self._last_inspect = state.displaylist_inspect
+            if getattr(self.window, "_screen", None):
+                if state.displaylist_inspect:
+                    self.window._screen.focus(self.window)
+                else:
+                    self.window._screen.focus(None)
+
+        if state.displaylist_inspect:
             segs = state.dlist.screen_segments(self._dmactl)
             if not segs:
-                state.dlist_selected_region = None
+                store.set_dlist_selected_region(None)
                 self.window.clear_to_bottom()
                 return
             if state.dlist_selected_region is None:
-                state.dlist_selected_region = 0
+                store.set_dlist_selected_region(0)
             if state.dlist_selected_region >= len(segs):
-                state.dlist_selected_region = len(segs) - 1
+                store.set_dlist_selected_region(len(segs) - 1)
             for idx, (start, end, mode) in enumerate(segs):
                 length = end - start
                 last = (end - 1) & 0xFFFF

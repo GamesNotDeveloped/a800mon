@@ -1,5 +1,5 @@
 from .app import VisualRpcComponent
-from .appstate import state
+from .appstate import state, store
 from .datastructures import CpuState
 from .rpc import Command, RpcException
 
@@ -12,7 +12,8 @@ class CpuStateViewer(VisualRpcComponent):
             pass
         else:
             ypos, xpos, pc, a, x, y, s, p = data
-            state.cpu = CpuState(ypos=ypos, xpos=xpos, pc=pc, a=a, x=x, y=y, s=s, p=p)
+            cpu = CpuState(ypos=ypos, xpos=xpos, pc=pc, a=a, x=x, y=y, s=s, p=p)
+            store.set_cpu(cpu)
 
     def render(self, force_redraw=False):
         self.window.print_line(repr(state.cpu))
