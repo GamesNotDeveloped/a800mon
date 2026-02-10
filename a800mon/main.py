@@ -101,7 +101,7 @@ def main(scr, socket_path):
         shortcuts.add_global(Shortcut("d", "Toggle DLIST", toggle_dlist))
         shortcuts.add_global(
             Shortcut(
-                "a",
+                9,
                 "ATASCII/ASCII",
                 lambda: dispatcher.dispatch(
                     Actions.SET_ATASCII, not state.use_atascii

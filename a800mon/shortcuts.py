@@ -17,6 +17,7 @@ class LayerAlreadyRegistered(Exception):
 
 KEYS_STR_MAP = {
     27: "Esc",
+    9: "Tab",
 }
 
 
