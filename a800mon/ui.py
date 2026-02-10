@@ -342,6 +342,7 @@ def init_color_pairs():
     curses.init_pair(4, curses.COLOR_GREEN, curses.COLOR_BLACK)
     curses.init_pair(5, curses.COLOR_RED, curses.COLOR_BLACK)
     curses.init_pair(6, curses.COLOR_YELLOW, curses.COLOR_BLACK)
+    curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLACK)
 
 
 class Color(enum.Enum):
@@ -356,6 +357,7 @@ class Color(enum.Enum):
     APPMODE_SHUTDOWN = (5, curses.A_BOLD | curses.A_REVERSE | curses.A_DIM)
     SHORTCUT = (0, curses.A_REVERSE)
     MNEMONIC = (4, curses.A_BOLD)
+    COMMENT = (7, curses.A_DIM)
 
     def attr(self):
         return curses.color_pair(self.value[0]) | self.value[1]

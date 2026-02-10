@@ -32,7 +32,6 @@ class ActionDispatcher(Component):
     def __init__(self, rpc):
         self._rpc = rpc
         self._rpc_queue = []
-        self._last_cpu_pc = None
 
     def _call_rpc(self, cmd):
         try:
@@ -137,10 +136,6 @@ class ActionDispatcher(Component):
 
     def update_cpu(self, cpu_state):
         store.set_cpu(cpu_state)
-        pc = cpu_state.pc & 0xFFFF
-        if self._last_cpu_pc is None or state.disassembly_addr == self._last_cpu_pc:
-            store.set_disassembly_addr(pc)
-        self._last_cpu_pc = pc
 
     def update_dlist(self, dlist):
         store.set_dlist(dlist, state.dmactl)

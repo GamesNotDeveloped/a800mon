@@ -40,7 +40,7 @@ def main(scr, socket_path):
     wcpu = Window(title="CPU State")
     wdlist = Window(title="DisplayList")
     wscreen = Window(title="Screen Buffer (ATASCII)")
-    wdisasm = Window(title="Disassembly")
+    wdisasm = Window(title="Disassembler")
     waddr_input = Window(border=False)
     whistory = Window(title="History")
     top = Window(border=False)
@@ -175,6 +175,10 @@ def main(scr, socket_path):
 
         def toggle_disassembly():
             if not wdisasm.visible:
+                if state.disassembly_addr is None:
+                    dispatcher.dispatch(
+                        Actions.SET_DISASSEMBLY_ADDR, state.cpu.pc & 0xFFFF
+                    )
                 dispatcher.dispatch(Actions.SET_DISASSEMBLY, True)
                 wdisasm.visible = True
                 app.rebuild_screen()

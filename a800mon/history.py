@@ -7,6 +7,8 @@ from .disasm import DecodedInstruction, disasm_6502_one_decoded
 from .rpc import RpcException
 from .ui import Color
 
+ASM_COMMENT_COL = 18
+
 
 class HistoryViewer(VisualRpcComponent):
     def __init__(self, *args, **kwargs):
@@ -96,23 +98,28 @@ class HistoryViewer(VisualRpcComponent):
     def _print_asm(self, ins: DecodedInstruction, rev_attr: int = 0):
         if not ins.mnemonic:
             return
+        core_len = len(ins.mnemonic)
         self.window.print(ins.mnemonic, attr=Color.MNEMONIC.attr() | rev_attr)
         if not ins.operand:
-            return
-        self.window.print(" ", attr=rev_attr)
-        if ins.flow_target is None or ins.operand_addr_span is None:
-            self.window.print(ins.operand, attr=rev_attr)
+            pass
         else:
-            start, end = ins.operand_addr_span
-            self.window.print(ins.operand[:start], attr=rev_attr)
-            self.window.print(
-                ins.operand[start:end], attr=Color.ADDRESS.attr() | rev_attr
-            )
-            self.window.print(ins.operand[end:], attr=rev_attr)
+            self.window.print(" ", attr=rev_attr)
+            core_len += 1 + len(ins.operand)
+            if ins.flow_target is None or ins.operand_addr_span is None:
+                self.window.print(ins.operand, attr=rev_attr)
+            else:
+                start, end = ins.operand_addr_span
+                self.window.print(ins.operand[:start], attr=rev_attr)
+                self.window.print(
+                    ins.operand[start:end], attr=Color.ADDRESS.attr() | rev_attr
+                )
+                self.window.print(ins.operand[end:], attr=rev_attr)
         if not ins.comment:
             return
+        if core_len < ASM_COMMENT_COL:
+            self.window.print(" " * (ASM_COMMENT_COL - core_len), attr=rev_attr)
         self.window.print(" ", attr=rev_attr)
-        self.window.print(ins.comment, attr=rev_attr)
+        self.window.print(ins.comment, attr=Color.COMMENT.attr() | rev_attr)
 
     def _print_row(self, pc: int, ins: DecodedInstruction, rev_attr: int, prefix: str = ""):
         if prefix:
