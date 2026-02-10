@@ -2,23 +2,9 @@ import time
 
 from .app import InputComponent, VisualRpcComponent
 from .appstate import state
-from .disasm import disasm_6502
+from .disasm import DecodedInstruction, disasm_6502_decoded
 from .rpc import RpcException
 from .ui import Color
-
-FLOW_MNEMONICS = {
-    "JMP",
-    "JSR",
-    "BCC",
-    "BCS",
-    "BEQ",
-    "BMI",
-    "BNE",
-    "BPL",
-    "BVC",
-    "BVS",
-    "BRA",
-}
 
 
 class DisassemblyViewer(VisualRpcComponent):
@@ -47,49 +33,39 @@ class DisassemblyViewer(VisualRpcComponent):
             data = self.rpc.read_memory(addr, read_len)
         except RpcException:
             return
-        self._lines = disasm_6502(addr, data)[: self.window._ih]
+        self._lines = disasm_6502_decoded(addr, data)[: self.window._ih]
         self._last_addr = addr
         self._last_update = now
 
     def render(self, force_redraw=False):
         self.window.cursor = 0, 0
-        for line in self._lines[: self.window._ih]:
-            if ":" in line:
-                addr, rest = line.split(":", 1)
-                self.window.print(f"{addr}:", attr=Color.ADDRESS.attr())
-                formatted = rest.lstrip()
-                raw_text = formatted[:8]
-                asm_text = formatted[8:].lstrip() if len(formatted) > 8 else ""
-                self.window.print(" ")
-                self.window.print(f"{raw_text:<8} ")
-                self._print_asm(asm_text)
-            else:
-                self.window.print(line)
+        for ins in self._lines[: self.window._ih]:
+            self.window.print(f"{ins.addr:04X}:", attr=Color.ADDRESS.attr())
+            self.window.print(" ")
+            self.window.print(f"{ins.raw_text:<8} ")
+            self._print_asm(ins)
             self.window.clear_to_eol()
             self.window.newline()
         self.window.clear_to_bottom()
 
-    def _print_asm(self, asm_text: str):
-        if not asm_text:
+    def _print_asm(self, ins: DecodedInstruction):
+        if not ins.mnemonic:
             return
-        parts = asm_text.split(None, 1)
-        mnemonic = parts[0].upper()
-        operand = parts[1] if len(parts) > 1 else ""
-        self.window.print(mnemonic, attr=Color.MNEMONIC.attr())
-        if not operand:
+        self.window.print(ins.mnemonic, attr=Color.MNEMONIC.attr())
+        if not ins.operand:
             return
         self.window.print(" ")
-        if mnemonic not in FLOW_MNEMONICS:
-            self.window.print(operand)
+        if ins.flow_target is None or ins.operand_addr_span is None:
+            self.window.print(ins.operand)
+        else:
+            start, end = ins.operand_addr_span
+            self.window.print(ins.operand[:start])
+            self.window.print(ins.operand[start:end], attr=Color.ADDRESS.attr())
+            self.window.print(ins.operand[end:])
+        if not ins.comment:
             return
-        span = _find_hex_addr_span(operand)
-        if span is None:
-            self.window.print(operand)
-            return
-        start, end = span
-        self.window.print(operand[:start])
-        self.window.print(operand[start:end], attr=Color.ADDRESS.attr())
-        self.window.print(operand[end:])
+        self.window.print(" ")
+        self.window.print(ins.comment)
 
 
 class DisassemblyInputHandler(InputComponent):
@@ -113,19 +89,3 @@ class DisassemblyInputHandler(InputComponent):
             f"{state.disassembly_addr & 0xFFFF:04X}",
         )
         return True
-
-
-def _find_hex_addr_span(text: str):
-    start = text.find("$")
-    if start < 0:
-        return None
-    end = start + 1
-    while end < len(text):
-        ch = text[end]
-        if ("0" <= ch <= "9") or ("A" <= ch <= "F") or ("a" <= ch <= "f"):
-            end += 1
-            continue
-        break
-    if end == start + 1:
-        return None
-    return start, end

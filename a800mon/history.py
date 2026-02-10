@@ -3,23 +3,9 @@ import time
 
 from .app import VisualRpcComponent
 from .appstate import state
-from .disasm import disasm_6502_one_parts
+from .disasm import DecodedInstruction, disasm_6502_one_decoded
 from .rpc import RpcException
 from .ui import Color
-
-FLOW_MNEMONICS = {
-    "JMP",
-    "JSR",
-    "BCC",
-    "BCS",
-    "BEQ",
-    "BMI",
-    "BNE",
-    "BPL",
-    "BVC",
-    "BVS",
-    "BRA",
-}
 
 
 class HistoryViewer(VisualRpcComponent):
@@ -61,66 +47,80 @@ class HistoryViewer(VisualRpcComponent):
 
         next_pc = state.cpu.pc & 0xFFFF
         next_bytes = self._next_opbytes if self._next_pc == next_pc else b""
-        raw_text, asm_text = self._format_disasm(next_pc, next_bytes)
+        next_ins = self._format_disasm(next_pc, next_bytes)
 
         if self._reverse_order:
             rows = list(reversed(self._entries[: max(0, self.window._ih - 1)]))
             for entry in rows:
-                raw_row, asm_row = self._format_disasm(entry.pc, entry.opbytes)
-                self._print_row(entry.pc, raw_row, asm_row, 0)
+                row_ins = self._format_disasm(entry.pc, entry.opbytes)
+                self._print_row(entry.pc, row_ins, 0)
                 self._finish_row(inverse=False)
             self.window.cursor = (0, self.window._ih - 1)
-            self._print_row(next_pc, raw_text, asm_text, curses.A_REVERSE)
+            self._print_row(next_pc, next_ins, curses.A_REVERSE)
             self.window.fill_to_eol(attr=curses.A_REVERSE)
         else:
             # Synthetic first line: next instruction at current PC.
-            self._print_row(next_pc, raw_text, asm_text, curses.A_REVERSE)
+            self._print_row(next_pc, next_ins, curses.A_REVERSE)
             self._finish_row(inverse=True)
 
             if self.window._ih > 1:
                 rows = self._entries[: self.window._ih - 1]
                 for entry in rows:
-                    raw_row, asm_row = self._format_disasm(entry.pc, entry.opbytes)
-                    self._print_row(entry.pc, raw_row, asm_row, 0)
+                    row_ins = self._format_disasm(entry.pc, entry.opbytes)
+                    self._print_row(entry.pc, row_ins, 0)
                     self._finish_row(inverse=False)
 
-    def _format_disasm(self, pc: int, opbytes: bytes) -> tuple[str, str]:
+    def _format_disasm(self, pc: int, opbytes: bytes) -> DecodedInstruction:
         if self._can_disasm:
             try:
-                return disasm_6502_one_parts(pc, opbytes)
+                ins = disasm_6502_one_decoded(pc, opbytes)
+                if ins is not None:
+                    return ins
             except RuntimeError:
                 self._can_disasm = False
-        return " ".join(f"{b:02X}" for b in opbytes), ""
+        raw_text = " ".join(f"{b:02X}" for b in opbytes)
+        return DecodedInstruction(
+            addr=pc & 0xFFFF,
+            size=len(opbytes),
+            raw=opbytes,
+            raw_text=raw_text,
+            mnemonic="",
+            operand="",
+            comment="",
+            asm_text="",
+            addressing="",
+            flow_target=None,
+            operand_addr_span=None,
+        )
 
-    def _print_asm(self, asm_text: str, rev_attr: int = 0):
-        if not asm_text:
+    def _print_asm(self, ins: DecodedInstruction, rev_attr: int = 0):
+        if not ins.mnemonic:
             return
-        parts = asm_text.split(None, 1)
-        mnemonic = parts[0].upper()
-        operand = parts[1] if len(parts) > 1 else ""
-        self.window.print(mnemonic, attr=Color.MNEMONIC.attr() | rev_attr)
-        if not operand:
+        self.window.print(ins.mnemonic, attr=Color.MNEMONIC.attr() | rev_attr)
+        if not ins.operand:
             return
         self.window.print(" ", attr=rev_attr)
-        if mnemonic not in FLOW_MNEMONICS:
-            self.window.print(operand, attr=rev_attr)
+        if ins.flow_target is None or ins.operand_addr_span is None:
+            self.window.print(ins.operand, attr=rev_attr)
+        else:
+            start, end = ins.operand_addr_span
+            self.window.print(ins.operand[:start], attr=rev_attr)
+            self.window.print(
+                ins.operand[start:end], attr=Color.ADDRESS.attr() | rev_attr
+            )
+            self.window.print(ins.operand[end:], attr=rev_attr)
+        if not ins.comment:
             return
-        span = _find_hex_addr_span(operand)
-        if span is None:
-            self.window.print(operand, attr=rev_attr)
-            return
-        start, end = span
-        self.window.print(operand[:start], attr=rev_attr)
-        self.window.print(operand[start:end], attr=Color.ADDRESS.attr() | rev_attr)
-        self.window.print(operand[end:], attr=rev_attr)
+        self.window.print(" ", attr=rev_attr)
+        self.window.print(ins.comment, attr=rev_attr)
 
-    def _print_row(self, pc: int, raw_text: str, asm_text: str, rev_attr: int, prefix: str = ""):
+    def _print_row(self, pc: int, ins: DecodedInstruction, rev_attr: int, prefix: str = ""):
         if prefix:
             self.window.print(prefix, attr=rev_attr)
         self.window.print(f"{pc:04X}:", attr=Color.ADDRESS.attr() | rev_attr)
         self.window.print(" ", attr=rev_attr)
-        self.window.print(f"{raw_text:<8} ", attr=rev_attr)
-        self._print_asm(asm_text, rev_attr)
+        self.window.print(f"{ins.raw_text:<8} ", attr=rev_attr)
+        self._print_asm(ins, rev_attr)
 
     def _finish_row(self, inverse: bool):
         _, y_before = self.window.cursor
@@ -131,19 +131,3 @@ class HistoryViewer(VisualRpcComponent):
         _, y_after = self.window.cursor
         if y_after == y_before:
             self.window.newline()
-
-
-def _find_hex_addr_span(text: str):
-    start = text.find("$")
-    if start < 0:
-        return None
-    end = start + 1
-    while end < len(text):
-        ch = text[end]
-        if ("0" <= ch <= "9") or ("A" <= ch <= "F") or ("a" <= ch <= "f"):
-            end += 1
-            continue
-        break
-    if end == start + 1:
-        return None
-    return start, end
