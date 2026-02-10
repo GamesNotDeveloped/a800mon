@@ -57,6 +57,8 @@ class App:
     def rebuild_screen(self):
         self._screen.rebuild()
         for component in self._visual_components:
+            if not component.window.visible:
+                continue
             component.render(force_redraw=True)
         self._screen.update()
 
@@ -99,6 +101,8 @@ class App:
 
     def render_components(self):
         for component in self._visual_components:
+            if not component.window.visible:
+                continue
             component.render()
         self._screen.update()
         for component in self._components:

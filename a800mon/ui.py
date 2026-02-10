@@ -41,6 +41,10 @@ class Screen:
         if old is window:
             return
         self.focused = window
+        if old and old.on_blur:
+            old.on_blur()
+        if window and window.on_focus:
+            window.on_focus()
         if old:
             old.redraw()
         if window:
@@ -50,6 +54,8 @@ class Screen:
         if not self._initialized:
             raise RuntimeError("Screen not initialized!")
         for window in self.windows:
+            if not window.visible:
+                continue
             window.refresh_if_dirty()
         self.scr.refresh()
 
@@ -62,7 +68,8 @@ class Screen:
         if self.layout_initializer:
             self.layout_initializer(self)
         for window in self.windows:
-            window.initialize()
+            if window.visible:
+                window.initialize()
 
     def update(self):
         if not self._initialized:
@@ -95,6 +102,21 @@ class Window:
         self._border = border
         self.title = title
         self.parent = None
+        self._screen = None
+        self._visible = True
+        self.on_focus = None
+        self.on_blur = None
+
+    @property
+    def visible(self):
+        return self._visible
+
+    @visible.setter
+    def visible(self, value):
+        new_val = bool(value)
+        if new_val == self._visible:
+            return
+        self._visible = new_val
 
     def add_to_parent(self, parent):
         if self.parent:
@@ -154,7 +176,7 @@ class Window:
     def redraw(self):
         if self._border:
             focus_attr = Color.WINDOW_TITLE.attr()
-            if getattr(self, "_screen", None) and self._screen.focused is self:
+            if self._screen is not None and self._screen.focused is self:
                 focus_attr = Color.FOCUS.attr()
             self.outer.attron(focus_attr)
             self.outer.box()
@@ -175,7 +197,7 @@ class Window:
             self._dirty = True
             return
         focus_attr = Color.WINDOW_TITLE.attr()
-        if getattr(self, "_screen", None) and self._screen.focused is self:
+        if self._screen is not None and self._screen.focused is self:
             focus_attr = Color.FOCUS.attr()
         self.outer.attron(focus_attr)
         # Rewrite only top border line to avoid full box redraw on title updates.
@@ -190,6 +212,8 @@ class Window:
         self.y = y
         self.w = w
         self.h = h
+        if not self.visible:
+            return
         self.initialize()
         self.redraw()
         self.refresh()

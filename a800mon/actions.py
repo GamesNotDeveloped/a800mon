@@ -19,6 +19,7 @@ class Actions(enum.Enum):
     TERMINATE = enum.auto()
     SET_DLIST_INSPECT = enum.auto()
     SET_ATASCII = enum.auto()
+    SET_DISASSEMBLY = enum.auto()
     DLIST_NEXT = enum.auto()
     DLIST_PREV = enum.auto()
     QUIT = enum.auto()
@@ -90,6 +91,9 @@ class ActionDispatcher(Component):
         if action == Actions.SET_ATASCII:
             store.set_use_atascii(bool(value))
             return
+        if action == Actions.SET_DISASSEMBLY:
+            store.set_disassembly_enabled(bool(value))
+            return
         if action == Actions.DLIST_NEXT:
             if not state.displaylist_inspect:
                 return
@@ -120,6 +124,7 @@ class ActionDispatcher(Component):
 
     def update_cpu(self, cpu_state):
         store.set_cpu(cpu_state)
+        store.set_disassembly_addr(cpu_state.pc)
 
     def update_dlist(self, dlist):
         store.set_dlist(dlist, state.dmactl)

@@ -25,6 +25,8 @@ class AppStateData:
     active_mode: AppMode
     displaylist_inspect: bool
     use_atascii: bool
+    disassembly_enabled: bool
+    disassembly_addr: int
     dmactl: int
 
 
@@ -41,6 +43,8 @@ _state = AppStateData(
     active_mode=AppMode.NORMAL,
     displaylist_inspect=False,
     use_atascii=True,
+    disassembly_enabled=False,
+    disassembly_addr=0,
     dmactl=0,
 )
 
@@ -56,6 +60,12 @@ class StateStore:
 
     def set_use_atascii(self, enabled: bool):
         self._s.use_atascii = enabled
+
+    def set_disassembly_enabled(self, enabled: bool):
+        self._s.disassembly_enabled = enabled
+
+    def set_disassembly_addr(self, addr: int):
+        self._s.disassembly_addr = addr & 0xFFFF
 
     def set_dlist_selected_region(self, idx: int | None):
         self._s.dlist_selected_region = idx
@@ -85,13 +95,16 @@ store = _store
 
 
 class StateProxy:
-    def __init__(self, backing):
-        object.__setattr__(self, "_backing", backing)
+    def __init__(self, backing: AppStateData):
+        self._backing = backing
 
     def __getattr__(self, name):
         return getattr(self._backing, name)
 
     def __setattr__(self, name, value):
+        if name == "_backing":
+            object.__setattr__(self, name, value)
+            return
         raise AttributeError(
             "State is read-only. Use ActionDispatcher to update state."
         )

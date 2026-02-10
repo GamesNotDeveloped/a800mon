@@ -5,6 +5,7 @@ from .actions import ActionDispatcher, Actions, ShortcutInput
 from .app import App, Component
 from .appstate import AppMode, shortcuts, state
 from .cpustate import CpuStateViewer
+from .disassembly import DisassemblyViewer
 from .displaylist import DisplayListViewer
 from .history import HistoryViewer
 from .rpc import RpcClient
@@ -38,17 +39,20 @@ def main(scr, socket_path):
     wcpu = Window(title="CPU State")
     wdlist = Window(title="DisplayList")
     wscreen = Window(title="Screen Buffer (ATASCII)")
+    wdisasm = Window(title="Disassembly")
     whistory = Window(title="History")
     top = Window(border=False)
     bottom = Window(border=False)
 
     screen_inspector = ScreenBufferInspector(rpc, wscreen)
+    disassembly_view = DisassemblyViewer(rpc, wdisasm)
     history_view = HistoryViewer(rpc, whistory, reverse_order=True)
     display_list = DisplayListViewer(rpc, wdlist)
     cpu = CpuStateViewer(rpc, wcpu)
     topbar = TopBar(rpc, top)
     appmode_updater = AppModeUpdater(dispatcher)
     shortcutbar = ShortcutBar(bottom)
+    wdisasm.visible = state.disassembly_enabled
 
     def init_screen(scr):
         w, h = scr.size
@@ -58,23 +62,50 @@ def main(scr, socket_path):
         right_total = max(1, w - right_x)
         gap = 2
         if right_total <= gap + 2:
-            screen_w = 1
-            history_w = 1
+            base_screen_w = 1
+            base_history_w = 1
         else:
-            screen_w = (right_total - gap) * 2 // 3
-            history_w = right_total - gap - screen_w
+            base_screen_w = (right_total - gap) * 2 // 3
+            base_history_w = right_total - gap - base_screen_w
+            if base_screen_w < 1:
+                base_screen_w = 1
+            if base_history_w < 1:
+                base_history_w = 1
+                base_screen_w = max(1, right_total - gap - base_history_w)
+
+        if wdisasm.visible:
+            history_w = max(1, base_history_w - 8)
+            disasm_w = max(1, base_history_w - 8)
+            screen_w = right_total - history_w - disasm_w - 2 * gap
             if screen_w < 1:
                 screen_w = 1
-            if history_w < 1:
-                history_w = 1
-                screen_w = max(1, right_total - gap - history_w)
-        wscreen.reshape(x=right_x, y=2, w=screen_w, h=wcpu.y - 3)
-        whistory.reshape(
-            x=wscreen.x + wscreen.w + gap,
-            y=2,
-            w=history_w,
-            h=wcpu.y - 3,
-        )
+                remaining = max(2, right_total - screen_w - 2 * gap)
+                history_w = max(1, remaining // 2)
+                disasm_w = max(1, remaining - history_w)
+
+            wscreen.reshape(x=right_x, y=2, w=screen_w, h=wcpu.y - 3)
+            wdisasm.reshape(
+                x=wscreen.x + wscreen.w + gap,
+                y=2,
+                w=disasm_w,
+                h=wcpu.y - 3,
+            )
+            whistory.reshape(
+                x=wdisasm.x + wdisasm.w + gap,
+                y=2,
+                w=history_w,
+                h=wcpu.y - 3,
+            )
+        else:
+            screen_w = base_screen_w
+            history_w = base_history_w
+            wscreen.reshape(x=right_x, y=2, w=screen_w, h=wcpu.y - 3)
+            whistory.reshape(
+                x=wscreen.x + wscreen.w + gap,
+                y=2,
+                w=history_w,
+                h=wcpu.y - 3,
+            )
         top.reshape(x=0, y=0, w=w, h=1)
         bottom.reshape(x=0, y=h - 1, w=w, h=1)
 
@@ -121,7 +152,22 @@ def main(scr, socket_path):
             dispatcher.dispatch(Actions.SET_DLIST_INSPECT, new_val)
             screen.focus(wdlist if new_val else None)
 
-        shortcuts.add_global(Shortcut("d", "Toggle DLIST", toggle_dlist))
+        def toggle_disassembly():
+            if not wdisasm.visible:
+                dispatcher.dispatch(Actions.SET_DISASSEMBLY, True)
+                wdisasm.visible = True
+                app.rebuild_screen()
+                screen.focus(wdisasm)
+            elif screen.focused is not wdisasm:
+                screen.focus(wdisasm)
+            else:
+                screen.focus(wdlist if state.displaylist_inspect else None)
+                dispatcher.dispatch(Actions.SET_DISASSEMBLY, False)
+                wdisasm.visible = False
+                app.rebuild_screen()
+
+        shortcuts.add_global(Shortcut("s", "Toggle DLIST", toggle_dlist))
+        shortcuts.add_global(Shortcut("d", "Disassembly", toggle_disassembly))
         shortcuts.add_global(
             Shortcut(
                 9,
@@ -142,6 +188,7 @@ def main(scr, socket_path):
     app.add_component(cpu)
     app.add_component(display_list)
     app.add_component(screen_inspector)
+    app.add_component(disassembly_view)
     app.add_component(history_view)
 
     build_shortcuts()
