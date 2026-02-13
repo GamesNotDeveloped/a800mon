@@ -1,60 +1,103 @@
-CAP_MONITOR_BREAKPOINTS = 0x0008
+CAP_MONITOR_BREAK = 0x0001
+CAP_MONITOR_BREAKPOINTS = 0x0002
+CAP_EMULATION_ATARI_800 = 0x0003
+CAP_EMULATION_XE_XL = 0x0004
+CAP_EMULATION_ATARI_5200 = 0x0005
+
+STATUS_MACHINE_ATARI_800 = 0
+STATUS_MACHINE_XL_XE = 1
+STATUS_MACHINE_ATARI_5200 = 2
+STATUS_MACHINE_ATARI_1200XL = 3
+STATUS_MACHINE_ATARI_800XL = 4
+STATUS_MACHINE_ATARI_130XE = 5
+STATUS_MACHINE_ATARI_320XE_COMPY_SHOP = 6
+STATUS_MACHINE_ATARI_320XE_RAMBO = 7
+STATUS_MACHINE_ATARI_576XE = 8
+STATUS_MACHINE_ATARI_1088XE = 9
+STATUS_MACHINE_ATARI_XEGS = 10
+STATUS_MACHINE_ATARI_400 = 11
+STATUS_MACHINE_ATARI_600XL = 12
+
+STATUS_MACHINE_NAMES = {
+    STATUS_MACHINE_ATARI_800: "atari800",
+    STATUS_MACHINE_XL_XE: "xl_xe",
+    STATUS_MACHINE_ATARI_5200: "atari5200",
+    STATUS_MACHINE_ATARI_1200XL: "atari1200xl",
+    STATUS_MACHINE_ATARI_800XL: "atari800xl",
+    STATUS_MACHINE_ATARI_130XE: "atari130xe",
+    STATUS_MACHINE_ATARI_320XE_COMPY_SHOP: "atari320xe_compy_shop",
+    STATUS_MACHINE_ATARI_320XE_RAMBO: "atari320xe_rambo",
+    STATUS_MACHINE_ATARI_576XE: "atari576xe",
+    STATUS_MACHINE_ATARI_1088XE: "atari1088xe",
+    STATUS_MACHINE_ATARI_XEGS: "atarixegs",
+    STATUS_MACHINE_ATARI_400: "atari400",
+    STATUS_MACHINE_ATARI_600XL: "atari600xl",
+}
+
+STATUS_MACHINE_FAMILY_NAMES = {
+    0: "atari800",
+    1: "xl_xe",
+    2: "atari5200",
+}
+
+STATUS_OS_REVISION_NAMES = {
+    0x00: "800_a_ntsc",
+    0x01: "800_a_pal",
+    0x02: "800_b_ntsc",
+    0x03: "800_custom",
+    0x04: "800_altirra",
+    0x20: "xl_10",
+    0x21: "xl_11",
+    0x22: "xl_1",
+    0x23: "xl_2",
+    0x24: "xl_3a",
+    0x25: "xl_3b",
+    0x26: "xl_5",
+    0x27: "xl_3",
+    0x28: "xl_4",
+    0x29: "xl_59",
+    0x2A: "xl_59a",
+    0x2B: "xl_custom",
+    0x2C: "xl_altirra",
+    0x40: "5200_orig",
+    0x41: "5200_a",
+    0x42: "5200_custom",
+    0x43: "5200_altirra",
+    0xFF: "none",
+}
+
+STATUS_BASIC_REVISION_NAMES = {
+    0x00: "a",
+    0x01: "b",
+    0x02: "c",
+    0x03: "custom",
+    0x04: "altirra",
+    0xFF: "none",
+}
+
+STATUS_BUILTIN_GAME_REVISION_NAMES = {
+    0x00: "orig",
+    0x01: "custom",
+    0xFF: "none",
+}
+
+
+def format_status_name(value: int, mapping: dict[int, str]) -> str:
+    name = mapping.get(value)
+    if name is None:
+        return "unknown"
+    return name
 
 EMULATOR_CAPABILITIES = [
-    (0x0001, "SDL2 video backend (VIDEO_SDL2)"),
-    (0x0002, "SDL1 video backend (VIDEO_SDL)"),
-    (0x0003, "Sound support (SOUND)"),
-    (0x0004, "Callback sound backend (SOUND_CALLBACK)"),
-    (0x0005, "Audio recording (AUDIO_RECORDING)"),
-    (0x0006, "Video recording (VIDEO_RECORDING)"),
-    (0x0007, "Code breakpoints/history (MONITOR_BREAK)"),
-    (0x0008, "User breakpoint table (MONITOR_BREAKPOINTS)"),
-    (0x0009, "Readline monitor support (MONITOR_READLINE)"),
-    (0x000A, "Disassembler label hints (MONITOR_HINTS)"),
-    (0x000B, "UTF-8 monitor output (MONITOR_UTF8)"),
-    (0x000C, "ANSI monitor output (MONITOR_ANSI)"),
-    (0x000D, "Monitor assembler command (MONITOR_ASSEMBLER)"),
-    (0x000E, "Monitor profiling/coverage (MONITOR_PROFILE)"),
-    (0x000F, "Monitor TRACE command (MONITOR_TRACE)"),
-    (0x0010, "NetSIO/FujiNet emulation (NETSIO)"),
-    (0x0011, "IDE emulation (IDE)"),
-    (0x0012, "R: device support (R_IO_DEVICE)"),
-    (0x0013, "Black Box emulation (PBI_BB)"),
-    (0x0014, "MIO emulation (PBI_MIO)"),
-    (0x0015, "Prototype80 emulation (PBI_PROTO80)"),
-    (0x0016, "1400XL/1450XLD emulation (PBI_XLD)"),
-    (0x0017, "VoiceBox emulation (VOICEBOX)"),
-    (0x0018, "AF80 card emulation (AF80)"),
-    (0x0019, "BIT3 card emulation (BIT3)"),
-    (0x001A, "XEP80 emulation (XEP80_EMULATION)"),
-    (0x001B, "NTSC filter (NTSC_FILTER)"),
-    (0x001C, "PAL blending (PAL_BLENDING)"),
-    (0x001D, "Crash menu support (CRASH_MENU)"),
-    (0x001E, "New cycle-exact core (NEW_CYCLE_EXACT)"),
-    (0x001F, "libpng support (HAVE_LIBPNG)"),
-    (0x0020, "zlib support (HAVE_LIBZ)"),
+    (CAP_MONITOR_BREAK, "Code breakpoints/history enabled (MONITOR_BREAK)."),
+    (
+        CAP_MONITOR_BREAKPOINTS,
+        "User breakpoint table enabled (MONITOR_BREAKPOINTS).",
+    ),
+    (
+        CAP_EMULATION_ATARI_800,
+        "Atari 400/800 emulation available in this build.",
+    ),
+    (CAP_EMULATION_XE_XL, "Atari XL/XE emulation available in this build."),
+    (CAP_EMULATION_ATARI_5200, "Atari 5200 emulation available in this build."),
 ]
-
-
-def format_on_off_badge(enabled: bool, use_color: bool = False) -> str:
-    text = "ON " if enabled else "OFF"
-    badge = f" {text} "
-    if not use_color:
-        return badge
-    if enabled:
-        return f"\x1b[42;30m{badge}\x1b[0m"
-    return f"\x1b[41;97;1m{badge}\x1b[0m"
-
-
-def format_config_lines(cap_ids, use_color: bool = False):
-    enabled = set(int(v) & 0xFFFF for v in cap_ids)
-    known = set()
-    lines = []
-    for cap_id, desc in EMULATOR_CAPABILITIES:
-        known.add(cap_id)
-        badge = format_on_off_badge(cap_id in enabled, use_color=use_color)
-        lines.append(f"{badge} {desc}")
-    for cap_id in sorted(v for v in enabled if v not in known):
-        badge = format_on_off_badge(True, use_color=use_color)
-        lines.append(f"{badge} Unknown capability 0x{cap_id:04X}")
-    return lines

@@ -32,7 +32,22 @@ class SocketCommand(enum.IntEnum):
     BP_DELETE_CLAUSE = 24
     BP_SET_ENABLED = 25
     BP_LIST = 26
+    BUILD_FEATURES = 27
     CONFIG = 27
+    GTIA_STATE = 29
+    ANTIC_STATE = 30
+    CART_STATE = 31
+    JUMPS = 32
+    PIA_STATE = 33
+    POKEY_STATE = 34
+    STACK = 35
+    STEP_OVER = 36
+    RUN_UNTIL_RETURN = 37
+    BBRK = 38
+    BLINE = 39
+    SYSINFO = 40
+    SEARCH = 41
+    SET_REG = 42
 
 
 SUPPORTED_COMMANDS = {
@@ -63,7 +78,22 @@ SUPPORTED_COMMANDS = {
     Command.BP_DELETE_CLAUSE: 24,
     Command.BP_SET_ENABLED: 25,
     Command.BP_LIST: 26,
+    Command.BUILD_FEATURES: 27,
     Command.CONFIG: 27,
+    Command.GTIA_STATE: 29,
+    Command.ANTIC_STATE: 30,
+    Command.CART_STATE: 31,
+    Command.JUMPS: 32,
+    Command.PIA_STATE: 33,
+    Command.POKEY_STATE: 34,
+    Command.STACK: 35,
+    Command.STEP_OVER: 36,
+    Command.RUN_UNTIL_RETURN: 37,
+    Command.BBRK: 38,
+    Command.BLINE: 39,
+    Command.SYSINFO: 40,
+    Command.SEARCH: 41,
+    Command.SET_REG: 42,
 }
 
 
@@ -86,8 +116,7 @@ class SocketTransport:
                 asyncio.open_unix_connection(self.path), timeout=self._timeout
             )
         except (OSError, asyncio.TimeoutError) as ex:
-            raise ConnectionError(
-                f"Cannot connect to socket {self.path}: {ex}")
+            raise ConnectionError(f"Cannot connect to socket {self.path}: {ex}")
         self._reader = reader
         self._writer = writer
         self._connected = True
@@ -99,7 +128,7 @@ class SocketTransport:
         self._reader = None
         self._writer = None
         self._config_caps = ()
-        if writer is None:
+        if not writer:
             return
         writer.close()
         try:
@@ -113,9 +142,9 @@ class SocketTransport:
         await self.connect()
 
     async def _read_config_on_connect(self):
-        if self._writer is None:
+        if not self._writer:
             return
-        packet = bytes([SocketCommand.CONFIG]) + struct.pack("<H", 0)
+        packet = bytes([SocketCommand.BUILD_FEATURES]) + struct.pack("<H", 0)
         try:
             self._writer.write(packet)
             await asyncio.wait_for(self._writer.drain(), timeout=self._timeout)
@@ -142,7 +171,7 @@ class SocketTransport:
         self._config_caps = tuple(caps)
 
     async def _read_exact(self, ln: int):
-        if self._reader is None:
+        if not self._reader:
             raise ConnectionError("Socket not connected")
         try:
             return await asyncio.wait_for(
@@ -165,7 +194,7 @@ class SocketTransport:
 
         await self._ensure_connected()
         try:
-            if self._writer is None:
+            if not self._writer:
                 raise ConnectionError("Socket not connected")
             self._writer.write(packet)
             await asyncio.wait_for(self._writer.drain(), timeout=self._timeout)

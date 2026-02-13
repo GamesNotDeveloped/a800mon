@@ -37,6 +37,47 @@ class BreakpointClauseEntry:
     conditions: tuple[BreakpointConditionEntry, ...]
 
 
+@dataclasses.dataclass(frozen=True)
+class Breakpoint:
+    enabled: bool
+    clauses: tuple[BreakpointClauseEntry, ...]
+
+
+@dataclasses.dataclass(frozen=True)
+class Status:
+    paused: bool
+    emu_ms: int
+    reset_ms: int
+    crashed: bool
+    state_seq: int
+    machine_type: int
+
+    def __repr__(self) -> str:
+        paused = "yes" if self.paused else "no"
+        crashed = "yes" if self.crashed else "no"
+        return (
+            "paused=%s crashed=%s machine_type=%d emu_ms=%d reset_ms=%d state_seq=%d"
+            % (
+                paused,
+                crashed,
+                self.machine_type,
+                self.emu_ms,
+                self.reset_ms,
+                self.state_seq,
+            )
+        )
+
+
+@dataclasses.dataclass(frozen=True)
+class Sysinfo:
+    machine_family: int
+    os_revision: int
+    basic_revision: int
+    builtin_game_revision: int
+    basic_enabled: bool
+    tv_pal: bool
+
+
 @dataclasses.dataclass
 class CpuState:
     xpos: int = 0
@@ -67,6 +108,93 @@ class CpuState:
             f"Y={self.y:02X} S={self.s:02X} P={n}{v}*-{d}{i}{z}{c} "
             f"PC={self.pc:04X}"
         )
+
+
+@dataclasses.dataclass(frozen=True)
+class GtiaState:
+    hposp: tuple[int, int, int, int]
+    hposm: tuple[int, int, int, int]
+    sizep: tuple[int, int, int, int]
+    sizem: int
+    grafp: tuple[int, int, int, int]
+    grafm: int
+    colpm: tuple[int, int, int, int]
+    colpf: tuple[int, int, int, int]
+    colbk: int
+    prior: int
+    vdelay: int
+    gractl: int
+
+
+@dataclasses.dataclass(frozen=True)
+class AnticState:
+    dmactl: int
+    chactl: int
+    dlist: int
+    hscrol: int
+    vscrol: int
+    pmbase: int
+    chbase: int
+    vcount: int
+    nmien: int
+    ypos: int
+
+
+@dataclasses.dataclass(frozen=True)
+class CartSlotState:
+    present: int
+    cart_type: int
+    state: int
+    size_kb: int
+    raw: int
+
+
+@dataclasses.dataclass(frozen=True)
+class CartState:
+    autoreboot: int
+    main: CartSlotState
+    piggy: CartSlotState
+
+
+@dataclasses.dataclass(frozen=True)
+class JumpsState:
+    pcs: tuple[int, ...]
+
+
+@dataclasses.dataclass(frozen=True)
+class PiaState:
+    pactl: int
+    pbctl: int
+    porta: int
+    portb: int
+
+
+@dataclasses.dataclass(frozen=True)
+class PokeyState:
+    stereo_enabled: int
+    audf1: tuple[int, int, int, int]
+    audc1: tuple[int, int, int, int]
+    audctl1: int
+    kbcode: int
+    irqen: int
+    irqst: int
+    skstat: int
+    skctl: int
+    audf2: typing.Optional[tuple[int, int, int, int]] = None
+    audc2: typing.Optional[tuple[int, int, int, int]] = None
+    audctl2: typing.Optional[int] = None
+
+
+@dataclasses.dataclass(frozen=True)
+class StackEntry:
+    stack_off: int
+    value: int
+
+
+@dataclasses.dataclass(frozen=True)
+class StackState:
+    s: int
+    entries: tuple[StackEntry, ...]
 
 
 class DisplayListEntry:
@@ -153,7 +281,7 @@ class DisplayList:
         yield (count, run)
 
     def screen_segments(self, dmactl: int):
-        from .displaylist import DisplayListMemoryMapper
+        from .atari.displaylist import DisplayListMemoryMapper
 
         rows = DisplayListMemoryMapper(self, dmactl).row_ranges_with_modes()
         segs = []
@@ -224,7 +352,7 @@ class ScreenBuffer:
                 if start <= cur < stop:
                     take = min(remaining, stop - cur)
                     buf_start = offset + (cur - start)
-                    parts.append(self.buffer[buf_start: buf_start + take])
+                    parts.append(self.buffer[buf_start : buf_start + take])
                     cur += take
                     remaining -= take
                     break

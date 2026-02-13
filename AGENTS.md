@@ -30,6 +30,12 @@ This repository contains `a800mon`, a curses-based monitor UI and CLI for Atari8
 - **Dispatcher for actions**: UI actions are routed via `ActionDispatcher` (`py800mon/actions.py`). Callbacks may run immediate logic but must use the dispatcher to change state.
 - **Focus**: focus is controlled by `Screen.focus(...)`. Do not use `window._screen`.
 - **Active mode**: the active shortcut layer is determined by `state.active_mode` only. `ShortcutManager` is just a registry.
+- **RPC unpacking location**: binary protocol unpacking/validation MUST happen in RPC modules (`py800mon/rpc.py`, `go800mon/internal/rpc/*`), never in CLI/UI command handlers.
+- **Typed command results**: when a command returns a structured payload, define/extend data structures first (`py800mon/datastructures.py`, `go800mon/a800mon/datastructures.go`) and make RPC return those types.
+- **CLI/UI responsibility**: CLI/UI handlers should orchestrate input/output only. They must call dedicated logic/RPC methods and avoid embedding protocol parsing or domain logic.
+- **Logic vs usage split**: keep reusable logic/state machines in dedicated modules/classes; keep prompt/dispatch glue in CLI entry modules.
+- **Breakpoints architecture**: breakpoint business logic must be separated from CLI wiring and transport calls; CLI should only parse args, call dedicated APIs, and print results.
+- **Breakpoint expression parser**: parse/format of breakpoint expressions (CLI/UI syntax) must live in breakpoint modules, not in CLI command files.
 
 ## Shortcuts and Layers
 - Layers are defined in `ShortcutLayer` (`py800mon/shortcuts.py`).
@@ -37,9 +43,22 @@ This repository contains `a800mon`, a curses-based monitor UI and CLI for Atari8
 - Global shortcuts are registered in `ShortcutManager` and should not be rendered in the shortcut bar unless explicitly required.
 
 ## Code Style and Conventions
+- **Coding standards compliance**: follow `CODING_STANDARDS.md` for every change.
+- **Strict approval gate**: do not change any file unless the operator explicitly confirms the exact change scope first.
+- **No unapproved edits**: if confirmation is missing or ambiguous, stop and ask; do not proceed with assumptions.
+- **Mandatory rigor**: apply this approval rule rigorously on every task, without exceptions.
+- **Decision rule**: if request scope/intent is ambiguous or there is more than one valid design path, ask the operator for a decision before implementing.
+- **No autonomy drift**: do not take autonomous architectural/product decisions without explicit operator direction (unwanted autonomy is treated as a failure).
+- **Execution honesty**: do not claim a change was done unless it is actually present in code.
+- **Execution rigor**: execute requested changes scrupulously and verify affected code paths before reporting completion.
+- **No fake cleanup**: if asked to remove a pattern (e.g. `bool(...)`, `int(...)`, `is None`), do a repository-wide grep pass, apply fixes, then run grep again and report leftovers explicitly.
+- **No redundant wrappers**: do not keep/add redundant coercions (`bool/int/str`) when type is already guaranteed.
 - UI/UX quality is important even for a developer tool: preserve readability, visual stability, and interaction ergonomics.
 - Prefer clean code and maintainable design choices (clear naming, small focused functions, explicit dependencies, and minimal coupling) that reduce long-term maintenance cost.
 - Keep logic explicit. Avoid reflection, magic `getattr`/`setattr`, and implicit type coercion.
+- **DRY is mandatory**: do not copy parsing/validation logic across commands.
+- **Central parsing utils**: hex parsing, numeric range checks, and payload decoding must be implemented once in shared util modules and reused by CLI/UI/RPC code.
+- **No local parser clones**: command handlers must not define ad-hoc `_parse_*`/`parse*` duplicates when a shared helper exists.
 - Prefer deterministic actions (`SET_*`) over implicit toggles when practical.
 - Avoid injecting large object graphs into helpers; prefer closures in `main.py` when wiring UI callbacks.
 - Keep changes minimal and localized. Avoid refactors unless explicitly requested.
@@ -52,9 +71,9 @@ This repository contains `a800mon`, a curses-based monitor UI and CLI for Atari8
 - DO NOT GENERATE BLOAT!
 
 ## Testing / Sanity Checks
-- Basic compile check: `python3 -m py_compile py800mon/*.py`
+- Basic compile check (run after every change): `python3 -m py_compile py800mon/*.py` (run from repo root).
 - Run UI: `./bin/py800mon` (requires a running emulator socket).
-- Go build check: `GOCACHE=/tmp/go-build-cache go build -o /tmp/go800mon ./go800mon/cmd/go800mon`
+- Go build check (run after every change): `GOCACHE=/tmp/go-build-cache go build -o /tmp/go800mon ./cmd/go800mon` (run from `go800mon`).
 - Run Go UI: `./bin/go800mon` (requires a running emulator socket).
 - Go regression coverage: CLI default command resolution with global flags and no explicit subcommand.
 - Go regression coverage: view refresh when payload changes without obvious shape/range changes.
