@@ -19,6 +19,8 @@ from .screenbuffer import ScreenBufferInspector
 from .shortcutbar import ShortcutBar
 from .statusupdater import StatusUpdater
 from .topbar import TopBar
+from .uierror import UIErrorTimeout
+from .videopreview import VideoPreviewManager
 from .watchers import WatchersViewer
 
 
@@ -222,6 +224,8 @@ async def main(scr, socket_path):
         screen=screen,
         breakpoints_window=wbreakpoints,
     )
+    ui_error_timeout = UIErrorTimeout()
+    video_preview = VideoPreviewManager(socket_path=socket_path)
 
     def build_shortcuts():
         def action(key, label, action):
@@ -316,6 +320,14 @@ async def main(scr, socket_path):
             )
         )
         shortcuts.add_global(action(curses.KEY_F0 + 9, "Freeze", Actions.TOGGLE_FREEZE))
+        shortcuts.add_global(
+            Shortcut(
+                curses.KEY_F0 + 12,
+                "Video",
+                video_preview.toggle,
+                visible_in_global_bar=False,
+            )
+        )
         shortcuts.add_global(action("q", "Quit", Actions.QUIT))
 
     shortcuts_component = ShortcutsComponent(screen.shortcuts)
@@ -328,6 +340,8 @@ async def main(scr, socket_path):
     app.add_component(topbar)
     app.add_component(appmode_updater)
     app.add_component(shortcutbar)
+    app.add_component(ui_error_timeout)
+    app.add_component(video_preview)
     app.add_component(display_list)
     app.add_component(screen_inspector)
     app.add_component(history_view)

@@ -59,6 +59,7 @@ const (
 	CmdSysinfo         Command = 40
 	CmdSearch          Command = 41
 	CmdSetReg          Command = 42
+	CmdInputKey        Command = 43
 )
 
 type Status struct {
@@ -904,6 +905,17 @@ func (c *Client) BPList(ctx context.Context) (BreakpointList, error) {
 		out.Clauses = append(out.Clauses, clause)
 	}
 	return out, nil
+}
+
+func (c *Client) InputKey(ctx context.Context, action, keyspace, mods, consol byte, keycode uint16) error {
+	payload := make([]byte, 6)
+	payload[0] = action
+	payload[1] = keyspace
+	payload[2] = mods
+	payload[3] = consol
+	binary.LittleEndian.PutUint16(payload[4:], keycode)
+	_, err := c.Call(ctx, CmdInputKey, payload)
+	return err
 }
 
 func parseConfigPayload(data []byte) ([]uint16, error) {

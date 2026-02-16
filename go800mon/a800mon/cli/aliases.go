@@ -36,6 +36,7 @@ const (
 
 var (
 	RunMonitor                  = mon.RunMonitor
+	RunVideoPreview             = mon.RunVideoPreview
 	NewRpcClient                = mon.NewRpcClient
 	NewSocketTransport          = mon.NewSocketTransport
 	NewTrainer                  = mon.NewTrainer

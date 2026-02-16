@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"context"
+	"time"
 
 	. "go800mon/a800mon"
 	"go800mon/internal/displaylist"
@@ -28,6 +29,8 @@ const (
 	ActionSetBreakpointsSupported
 	ActionSetStatus
 	ActionSetLastRPCError
+	ActionSetUIError
+	ActionClearUIError
 	ActionSetCPU
 	ActionSetHistory
 	ActionSetDisassemblyRows
@@ -46,6 +49,11 @@ type CPUUpdate struct {
 type DListUpdate struct {
 	DList  displaylist.DisplayList
 	DMACTL byte
+}
+
+type UIError struct {
+	Text  string
+	Until time.Time
 }
 
 type StopLoop struct{}
@@ -182,6 +190,12 @@ func (d *ActionDispatcher) Dispatch(action Action, value any) error {
 		} else {
 			store.setLastRPCError("")
 		}
+	case ActionSetUIError:
+		if payload, ok := value.(UIError); ok {
+			store.setUIError(payload.Text, payload.Until)
+		}
+	case ActionClearUIError:
+		store.clearUIError()
 	case ActionSetCPU:
 		if update, ok := value.(CPUUpdate); ok {
 			store.setCPU(update.CPU, update.Disasm)

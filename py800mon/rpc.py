@@ -92,6 +92,7 @@ class Command(enum.Enum):
     SYSINFO = "sysinfo"
     SEARCH = "search"
     SET_REG = "set_reg"
+    INPUT_KEY = "input_key"
 
 
 class RpcClient:
@@ -140,6 +141,12 @@ class RpcClient:
         if len(data) < 1:
             raise RpcException("MEM_READ byte payload too short")
         return data[0]
+
+    async def input_key(
+        self, action: int, keyspace: int, mods: int, consol: int, keycode: int
+    ):
+        payload = struct.pack("<BBBBH", action, keyspace, mods, consol, keycode)
+        await self.call(Command.INPUT_KEY, payload)
 
     async def read_memory(self, addr: int, length: int):
         if length <= 0:

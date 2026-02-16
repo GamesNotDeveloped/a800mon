@@ -1,4 +1,5 @@
 import enum
+import time
 
 from .app import Component, StopLoop
 from .monitor.appstate import AppMode, state, store
@@ -23,6 +24,8 @@ class Actions(enum.Enum):
     SET_BREAKPOINTS_SUPPORTED = enum.auto()
     SET_STATUS = enum.auto()
     SET_LAST_RPC_ERROR = enum.auto()
+    SET_UI_ERROR = enum.auto()
+    CLEAR_UI_ERROR = enum.auto()
     SET_CPU = enum.auto()
     SET_DLIST = enum.auto()
     SET_DMACTL = enum.auto()
@@ -129,6 +132,13 @@ class ActionDispatcher(Component):
             return
         if action == Actions.SET_LAST_RPC_ERROR:
             store.set_last_rpc_error(value)
+            return
+        if action == Actions.SET_UI_ERROR:
+            text, duration = value
+            store.set_ui_error(text, time.monotonic() + float(duration))
+            return
+        if action == Actions.CLEAR_UI_ERROR:
+            store.clear_ui_error()
             return
         if action == Actions.SET_CPU:
             cpu_state, cpu_disasm = value

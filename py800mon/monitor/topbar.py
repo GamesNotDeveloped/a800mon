@@ -18,6 +18,7 @@ class TopBar(VisualComponent):
 
     async def update(self):
         snapshot = (
+            state.ui_error,
             state.last_rpc_error,
             state.crashed,
             state.emu_ms,
@@ -32,7 +33,11 @@ class TopBar(VisualComponent):
 
     def render(self, force_redraw=False):
         self.window.cursor = 0, 0
-        if state.last_rpc_error:
+        if state.ui_error:
+            self.window.print(f"{TITLE} ", Color.TOPBAR.attr())
+            self.window.print(f" {state.ui_error} ", Color.ERROR.attr())
+            self.window.fill_to_eol(attr=Color.ERROR.attr())
+        elif state.last_rpc_error:
             self.window.print(f"{TITLE} ", Color.TOPBAR.attr())
             self.window.print(f" {state.last_rpc_error} ", Color.ERROR.attr())
             self.window.fill_to_eol(attr=Color.ERROR.attr())

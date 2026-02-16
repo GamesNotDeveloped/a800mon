@@ -17,6 +17,7 @@ type cliArgs struct {
 	Tape     cliTapeCmd        `cmd:"" name:"tape" help:"Tape commands."`
 	Disk     cliDiskCmd        `cmd:"" name:"disk" help:"Disk commands."`
 	Screen   cliScreenCmd      `cmd:"" help:"Dump screen memory segments."`
+	Video    cliVideoCmd       `cmd:"" help:"Preview UDP video stream."`
 	Trainer  cliTrainerCmd     `cmd:"" name:"trainer" help:"Interactive value trainer."`
 }
 
@@ -176,6 +177,13 @@ type cliScreenCmd struct {
 	Columns *int `short:"c" name:"columns" help:"Bytes per line (default: 16)."`
 	NoHex   bool `name:"nohex" help:"Hide hex column in formatted output."`
 	NoASCII bool `name:"noascii" help:"Hide ASCII column in formatted output."`
+}
+
+type cliVideoCmd struct {
+	Host      string `name:"host" default:"127.0.0.1" help:"Host/IP to bind for UDP stream."`
+	Port      int    `name:"port" default:"6502" help:"UDP port to bind."`
+	RefreshMS int    `name:"refresh-ms" default:"33" help:"UI refresh interval in milliseconds."`
+	Zoom      int    `name:"zoom" default:"1" help:"Initial integer zoom factor for the window."`
 }
 
 var cliPathAliasPattern = regexp.MustCompile(`\s*\([^)]*\)`)

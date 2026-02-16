@@ -28,6 +28,8 @@ class AppStateData:
     disassembly_addr: int | None
     dmactl: int
     breakpoints_supported: bool
+    ui_error: str | None
+    ui_error_deadline: float
 
 
 _state = AppStateData(
@@ -47,6 +49,8 @@ _state = AppStateData(
     disassembly_addr=None,
     dmactl=0,
     breakpoints_supported=False,
+    ui_error=None,
+    ui_error_deadline=0.0,
 )
 
 
@@ -68,6 +72,14 @@ class StateStore:
 
     def set_breakpoints_supported(self, enabled: bool):
         self._s.breakpoints_supported = enabled
+
+    def set_ui_error(self, text: str | None, deadline: float):
+        self._s.ui_error = text
+        self._s.ui_error_deadline = deadline
+
+    def clear_ui_error(self):
+        self._s.ui_error = None
+        self._s.ui_error_deadline = 0.0
 
     def set_status(
         self, paused: bool, emu_ms: int, reset_ms: int, crashed: bool, state_seq: int

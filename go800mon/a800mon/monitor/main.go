@@ -224,6 +224,8 @@ func MonitorRun(ctx context.Context, socketPath string) error {
 
 	app := NewApp(screen, dispatcher, statusUpdater, 20)
 	breakpointsWindowUpdater := NewBreakpointsWindowUpdater(app, screen, wbreakpoints)
+	uiErrorTimeout := NewUIErrorTimeout()
+	videoPreview := NewVideoPreviewManager(socketPath)
 
 	app.AddComponent(dispatcher)
 	app.AddComponent(cpu)
@@ -234,16 +236,18 @@ func MonitorRun(ctx context.Context, socketPath string) error {
 	app.AddComponent(appmodeUpdater)
 	app.AddComponent(breakpointsWindowUpdater)
 	app.AddComponent(shortcutbar)
+	app.AddComponent(uiErrorTimeout)
+	app.AddComponent(videoPreview)
 	app.AddComponent(displayList)
 	app.AddComponent(screenInspector)
 	app.AddComponent(historyView)
 
-	buildShortcuts(shortcuts, dispatcher, screen, wdlist, whistory, wscreen, wwatch, wbreakpoints, wdisasm, app, disassemblyView)
+	buildShortcuts(shortcuts, dispatcher, screen, wdlist, whistory, wscreen, wwatch, wbreakpoints, wdisasm, app, disassemblyView, videoPreview)
 
 	return app.Loop(ctx)
 }
 
-func buildShortcuts(shortcuts *ShortcutManager, dispatcher *ActionDispatcher, screen *Screen, wdlist, whistory, wscreen, wwatch, wbreakpoints, wdisasm *Window, app *App, disassemblyView *DisassemblyViewer) {
+func buildShortcuts(shortcuts *ShortcutManager, dispatcher *ActionDispatcher, screen *Screen, wdlist, whistory, wscreen, wwatch, wbreakpoints, wdisasm *Window, app *App, disassemblyView *DisassemblyViewer, videoPreview *VideoPreviewManager) {
 	action := func(key int, label string, a Action) Shortcut {
 		return NewShortcut(key, label, func() { _ = dispatcher.Dispatch(a, nil) })
 	}
@@ -317,5 +321,8 @@ func buildShortcuts(shortcuts *ShortcutManager, dispatcher *ActionDispatcher, sc
 	prevWindow.VisibleInGlobalBar = false
 	_ = shortcuts.AddGlobal(prevWindow)
 	_ = shortcuts.AddGlobal(action(KeyF(9), "Freeze", ActionToggleFreeze))
+	videoToggle := NewShortcut(KeyF(12), "Video", videoPreview.Toggle)
+	videoToggle.VisibleInGlobalBar = false
+	_ = shortcuts.AddGlobal(videoToggle)
 	_ = shortcuts.AddGlobal(action('q', "Quit", ActionQuit))
 }

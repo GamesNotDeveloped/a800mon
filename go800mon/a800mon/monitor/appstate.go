@@ -2,6 +2,7 @@ package monitor
 
 import (
 	"sync"
+	"time"
 
 	. "go800mon/a800mon"
 	"go800mon/internal/displaylist"
@@ -35,6 +36,8 @@ type AppStateData struct {
 	History              []CpuHistoryEntry
 	DisassemblyRows      []DisasmRow
 	BreakpointsSupported bool
+	UIError              string
+	UIErrorUntil         time.Time
 }
 
 type DisasmRow struct {
@@ -197,4 +200,18 @@ func (s *StateStore) setBreakpointsSupported(enabled bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.s.BreakpointsSupported = enabled
+}
+
+func (s *StateStore) setUIError(text string, until time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.s.UIError = text
+	s.s.UIErrorUntil = until
+}
+
+func (s *StateStore) clearUIError() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.s.UIError = ""
+	s.s.UIErrorUntil = time.Time{}
 }

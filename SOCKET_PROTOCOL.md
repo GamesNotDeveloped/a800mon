@@ -5,11 +5,12 @@ This document describes the Remote Monitor binary RPC protocol implemented in `s
 ## Transport
 
 - Transport: UNIX domain stream socket (`AF_UNIX`, `SOCK_STREAM`)
+- Video stream (optional): UDP datagrams to configured host/port (see "Video Stream (UDP)").
 - Enable in emulator:
   - `-remote-monitor`
   - `-remote-monitor-transport socket`
   - `-remote-monitor-socket-path <path>` (optional; on Linux default is `/tmp/atari.sock`)
-  - config: `REMOTE_MONITOR_TRANSPORT=socket`, `REMOTE_MONITOR_SOCKET_PATH=<path>`
+  - config: `REMOTE_MONITOR=1`, `REMOTE_MONITOR_TRANSPORT=socket`, `REMOTE_MONITOR_SOCKET_PATH=<path>`
 - Multiple clients supported: up to 8
 - Model: request/response (no unsolicited server messages)
 
@@ -41,6 +42,55 @@ All multi-byte integers are little-endian.
 - If declared frame size exceeds internal input buffer, server closes client connection
 - Queued `STATUS` requests are coalesced: only newest pending `STATUS` is handled
 - Server send path is non-blocking; send failure closes client connection
+
+## Video Stream (UDP)
+
+Remote Monitor can optionally stream the rendered screen over UDP. This stream
+is best-effort and does not retransmit dropped packets.
+
+Enable in emulator:
+
+- `-remote-monitor`
+- `-remote-monitor-video`
+- `-remote-monitor-video-udp-host <host>` (default `127.0.0.1`)
+- `-remote-monitor-video-udp-port <port>` (default `6502`)
+- `-remote-monitor-video-fps <fps>` (default `60`)
+- config: `REMOTE_MONITOR_VIDEO=1`, `REMOTE_MONITOR_VIDEO_UDP_HOST=<host>`,
+  `REMOTE_MONITOR_VIDEO_UDP_PORT=<port>`, `REMOTE_MONITOR_VIDEO_FPS=<fps>`
+
+The stream sends the visible Atari screen area as RGB888 (`R`, `G`, `B` bytes),
+split into row chunks that fit within UDP datagrams. Default visible size is
+336x240, but it can change with view-area settings.
+Frames are sent only when the emulator refreshes the screen and are throttled
+to the configured FPS; if emulation is paused or frames are skipped, the stream
+may stall.
+All multi-byte fields in the UDP header are little-endian.
+
+### UDP Packet Header (24 bytes)
+
+| Field | Size | Description |
+| --- | --- | --- |
+| `magic` | `4` | ASCII `RMV1`. |
+| `version` | `u8` | Protocol version (`1`). |
+| `format` | `u8` | Pixel format (`1` = `RGB888`). |
+| `flags` | `u8` | Packet flags (see below). |
+| `reserved` | `u8` | Reserved, must be `0`. |
+| `frame_seq` | `u32` | Frame sequence (`Atari800_nframes`). |
+| `width` | `u16` | Visible frame width in pixels. |
+| `height` | `u16` | Visible frame height in pixels. |
+| `x` | `u16` | Start column (currently `0`). |
+| `y` | `u16` | Start row of payload (within visible frame). |
+| `rows` | `u16` | Number of rows in payload. |
+| `row_bytes` | `u16` | Bytes per row (`width * 3`). |
+
+Payload: `rows * row_bytes` bytes, row-major RGB888.
+
+`flags` bits:
+
+| Bit | Meaning |
+| --- | --- |
+| `0` | First packet of frame. |
+| `1` | Last packet of frame. |
 
 ## Status Codes
 
@@ -1124,6 +1174,106 @@ Response `OK` data:
 
 Validation:
 - For flag targets (`N/V/D/I/Z/C`), `value` must be `0` or `1`.
+
+---
+
+### `43` `INPUT_KEY`
+
+Request payload:
+
+| Field | Size | Description |
+| --- | --- | --- |
+| `action` | `u8` | `0` key up, `1` key down. |
+| `keyspace` | `u8` | Keyspace (`0` = ASCII, `1` = HID scancode). |
+| `mods` | `u8` | Modifier bits (see below). |
+| `consol` | `u8` | Reserved, must be `0`. |
+| `keycode` | `u16` | Key code (see keyspace rules below). |
+
+`mods` bits:
+
+| Bit | Meaning |
+| --- | --- |
+| `0` | Shift pressed. |
+| `1` | Control pressed. |
+| `2` | Alt pressed (ignored by emulator). |
+
+Response `OK` data:
+
+| Field | Size | Description |
+| --- | --- | --- |
+| (none) | `0` | Empty. |
+
+Keyspace rules:
+
+- `ASCII` (`keyspace=0`): `keycode` is ASCII `1..127`. `0` is allowed only for `action=0` (no-op).
+- `HID` (`keyspace=1`): `keycode` is USB HID keyboard usage (page `0x07`, `1..255`). `0` is allowed only for `action=0` (no-op). SDL builds feed this into the SDL keyboard path as a scancode.
+
+Behavior:
+- Emulator maps the keycode to its internal key codes based on keyspace.
+- Only one remote key is tracked; the most recent key-down wins.
+- Key-up is ignored unless the mapped key matches the most recent key-down.
+
+---
+
+### `44` `INPUT_JOYSTICKS`
+
+Request payload:
+
+| Field | Size | Description |
+| --- | --- | --- |
+| `joy1` | `u8` | Joystick 1 state bits (see below). |
+| `joy2` | `u8` | Joystick 2 state bits (see below). |
+
+`joy` bits:
+
+| Bit | Meaning |
+| --- | --- |
+| `0` | Up pressed. |
+| `1` | Down pressed. |
+| `2` | Left pressed. |
+| `3` | Right pressed. |
+| `4` | Fire pressed. |
+
+Response `OK` data:
+
+| Field | Size | Description |
+| --- | --- | --- |
+| (none) | `0` | Empty. |
+
+Behavior:
+- Joystick state is level-based; values stay in effect until changed.
+- Remote joystick input is merged with local input (pressed if either source is pressed).
+
+---
+
+### `45` `INPUT_SPECIAL`
+
+Request payload:
+
+| Field | Size | Description |
+| --- | --- | --- |
+| `state` | `u8` | Special key state bits (pressed = 1). |
+
+`state` bits:
+
+| Bit | Meaning |
+| --- | --- |
+| `0` | Help pressed. |
+| `1` | Start pressed. |
+| `2` | Select pressed. |
+| `3` | Option pressed. |
+| `4` | Reset pressed. |
+| `5` | Break pressed. |
+
+Response `OK` data:
+
+| Field | Size | Description |
+| --- | --- | --- |
+| (none) | `0` | Empty. |
+
+Behavior:
+- Start/Select/Option are level-based and merged with local console keys.
+- Help/Reset/Break trigger on a press edge and are ignored while held.
 
 ---
 

@@ -48,6 +48,7 @@ class SocketCommand(enum.IntEnum):
     SYSINFO = 40
     SEARCH = 41
     SET_REG = 42
+    INPUT_KEY = 43
 
 
 SUPPORTED_COMMANDS = {
@@ -94,6 +95,7 @@ SUPPORTED_COMMANDS = {
     Command.SYSINFO: 40,
     Command.SEARCH: 41,
     Command.SET_REG: 42,
+    Command.INPUT_KEY: 43,
 }
 
 

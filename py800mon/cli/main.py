@@ -16,6 +16,7 @@ from .commands import (
     screen,
     tape,
     trainer,
+    video,
 )
 from .utils import format_rpc_error
 
@@ -45,6 +46,7 @@ def parse_args(argv):
     disks.register(subparsers)
     screen.register(subparsers)
     trainer.register(subparsers)
+    video.register(subparsers)
 
     return parser.parse_args(argv)
 

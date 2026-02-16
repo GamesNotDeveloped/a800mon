@@ -14,6 +14,9 @@ dependencies = [
     "py65",
 ]
 
+[project.optional-dependencies]
+video = ["pillow"]
+
 [project.scripts]
 py800mon = "py800mon.cli:main"
 

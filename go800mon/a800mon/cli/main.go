@@ -100,6 +100,8 @@ func Main(argv []string) int {
 		return cmdDiskRemove(socket, args.Disk.Remove)
 	case "trainer":
 		return cmdTrainer(socket, args.Trainer)
+	case "video":
+		return cmdVideo(socket, args.Video)
 	case "screen":
 		return cmdScreen(socket, args.Screen)
 	default:

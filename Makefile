@@ -8,7 +8,7 @@ all: build
 build: build-py build-go
 
 build-go:
-	go build -C go800mon -a -o ../$(GO_BIN) ./cmd/go800mon
+	go build -C go800mon -o ../$(GO_BIN) ./cmd/go800mon
 
 install-py:
 	pip install --user .

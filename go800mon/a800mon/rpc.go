@@ -62,6 +62,7 @@ const (
 	CmdSysinfo         = irpc.CmdSysinfo
 	CmdSearch          = irpc.CmdSearch
 	CmdSetReg          = irpc.CmdSetReg
+	CmdInputKey        = irpc.CmdInputKey
 )
 
 func NewRpcClient(transport *SocketTransport) *RpcClient {
@@ -118,6 +119,10 @@ func (r *RpcClient) Sysinfo(ctx context.Context) (Sysinfo, error) {
 
 func (r *RpcClient) CPUState(ctx context.Context) (CPUState, error) {
 	return r.inner.CPUState(ctx)
+}
+
+func (r *RpcClient) InputKey(ctx context.Context, action, keyspace, mods, consol byte, keycode uint16) error {
+	return r.inner.InputKey(ctx, action, keyspace, mods, consol, keycode)
 }
 
 func (r *RpcClient) History(ctx context.Context) ([]CpuHistoryEntry, error) {
